@@ -1,4 +1,4 @@
-# bot.py - Complete Updated Version
+# bot.py - Final Secure Version
 import discord
 from discord.ext import commands
 import asyncio
@@ -17,6 +17,7 @@ config = {}
 warnings = {}
 muted = {}
 spam_tracker = {}
+ping_tracker = {}
 link_whitelist = []
 role_whitelist = []
 user_whitelist = []
@@ -34,7 +35,9 @@ def load_config():
             'max_warnings': 3,
             'spam_threshold': 5,
             'spam_timeframe': 5,
-            'bad_words': ['mc', 'bc', 'chutiya', 'bhosdi', 'gandu', 'madarchod', 'benchod']
+            'ping_threshold': 3,
+            'ping_timeframe': 10,
+            'bad_words': ['mc', 'bc', 'chutiya', 'bhosdi', 'gandu', 'madarchod', 'benchod', 'bhak', 'bsdk']
         }
 
 load_config()
@@ -135,7 +138,7 @@ async def mute_user(member, time, reason):
     if not mute_role:
         mute_role = await member.guild.create_role(name="Muted")
         for channel in member.guild.channels:
-            await channel.set_permissions(mute_role, send_messages=False, speak=False)
+            await channel.set_permissions(mute_role, send_messages=False, speak=False, add_reactions=False)
     await member.add_roles(mute_role)
     await asyncio.sleep(time)
     if member.id in muted:
@@ -158,6 +161,9 @@ async def unmute(ctx, member: discord.Member):
 @bot.command(name='kick')
 @commands.has_permissions(kick_members=True)
 async def kick(ctx, member: discord.Member, *, reason="No reason"):
+    if not is_whitelisted(ctx.author):
+        await ctx.send("❌ You don't have permission!")
+        return
     embed = discord.Embed(title="👢 User Kicked", color=discord.Color.red())
     embed.add_field(name="Reason", value=reason)
     embed.add_field(name="Moderator", value=ctx.author.mention)
@@ -169,6 +175,9 @@ async def kick(ctx, member: discord.Member, *, reason="No reason"):
 @bot.command(name='ban')
 @commands.has_permissions(ban_members=True)
 async def ban(ctx, member: discord.Member, *, reason="No reason"):
+    if not is_whitelisted(ctx.author):
+        await ctx.send("❌ You don't have permission!")
+        return
     embed = discord.Embed(title="🔨 User Banned", color=discord.Color.red())
     embed.add_field(name="Reason", value=reason)
     embed.add_field(name="Moderator", value=ctx.author.mention)
@@ -187,7 +196,7 @@ async def on_message(message):
         await bot.process_commands(message)
         return
     
-    # Spam detection
+    # -------- SPAM DETECTION --------
     if message.author.id not in spam_tracker:
         spam_tracker[message.author.id] = []
     
@@ -202,7 +211,23 @@ async def on_message(message):
             await mute_user(message.author, 300, "Spamming")
         spam_tracker[message.author.id] = []
     
-    # Bad words
+    # -------- PING SPAM DETECTION --------
+    ping_count = len(re.findall(r'<@!?&?\d+>', message.content))
+    if ping_count > 0:
+        if message.author.id not in ping_tracker:
+            ping_tracker[message.author.id] = []
+        ping_tracker[message.author.id].append(datetime.now())
+        recent_pings = [t for t in ping_tracker[message.author.id] if (datetime.now() - t).seconds < config.get('ping_timeframe', 10)]
+        
+        if len(recent_pings) > config.get('ping_threshold', 3):
+            await message.delete()
+            embed = discord.Embed(title="🚫 Ping Spam Detected!", description=f"{message.author.mention} Bhai ping mat kar!", color=discord.Color.red())
+            await message.channel.send(embed=embed, delete_after=5)
+            if len(recent_pings) > 5:
+                await mute_user(message.author, 300, "Ping spam")
+            ping_tracker[message.author.id] = []
+    
+    # -------- BAD WORDS --------
     for word in config.get('bad_words', []):
         if word.lower() in message.content.lower():
             await message.delete()
@@ -210,7 +235,7 @@ async def on_message(message):
             await message.channel.send(embed=embed, delete_after=5)
             break
     
-    # Links
+    # -------- LINKS --------
     link_pattern = r'(https?://[^\s]+)|(www\.[^\s]+)|(discord\.gg/[^\s]+)'
     if re.search(link_pattern, message.content):
         if message.author.id not in link_whitelist:
