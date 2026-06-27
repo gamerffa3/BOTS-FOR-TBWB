@@ -1,9 +1,9 @@
 {
     "log_channel": null,
     "mute_channel": null,
-    "auto_mute_time": 60,
+    "auto_mute_time": 300,
     "max_warnings": 3,
     "spam_threshold": 5,
     "spam_timeframe": 5,
-    "bad_words": ["badword1", "badword2", "badword3"]
+    "bad_words": ["mc", "bc", "chutiya", "bhosdi", "gandu", "madarchod", "benchod", "bhak", "bsdk"]
 }
