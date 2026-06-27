@@ -1,0 +1,31 @@
+{
+    "log_channel": null,
+    "mute_channel": null,
+    "prefix": "!",
+    "auto_mute_time": 60,
+    "max_warnings": 3,
+    "spam_threshold": 5,
+    "spam_timeframe": 5,
+    "mute_role_name": "Muted",
+    "admin_roles": [],
+    "allowed_links_roles": [],
+    "bad_words": [
+        "badword1",
+        "badword2",
+        "badword3"
+    ],
+    "log_events": {
+        "message_delete": true,
+        "message_edit": true,
+        "voice_update": true,
+        "channel_create": true,
+        "channel_delete": true,
+        "role_update": true,
+        "member_join": true,
+        "member_leave": true,
+        "warn": true,
+        "mute": true,
+        "kick": true,
+        "ban": true
+    }
+}
