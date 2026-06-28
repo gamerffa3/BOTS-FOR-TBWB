@@ -20,14 +20,18 @@ jobs:
         python-version: '3.9'
     
     - name: Install dependencies
-      run: pip install -r requirements.txt
-    
+      run: |
+        pip install --upgrade pip
+        pip install -r requirements.txt
+        
     - name: Run Bot
       env:
         DISCORD_TOKEN: ${{ secrets.DISCORD_TOKEN }}
+        GH_TOKEN: ${{ secrets.GH_TOKEN }}  # ✅ Added GH_TOKEN
       run: |
         while true; do
+          echo "🔄 Bot starting..."
           python bot.py
-          echo "Bot stopped. Restarting..."
+          echo "❌ Bot stopped. Restarting in 5 seconds..."
           sleep 5
-        done
+        done.
