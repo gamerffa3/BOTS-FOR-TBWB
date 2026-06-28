@@ -1,3 +1,10 @@
 discord.py
+requests
 aiohttp
-asyncio
+pynacl
+youtube_dl
+spotipy
+beautifulsoup4
+lxml
+pillow
+psutil
