@@ -1,4 +1,4 @@
-# bot.py - Complete Discord Bot with Full AI Identity
+# bot.py - Complete Discord Bot with Full AI Identity (Optimized)
 import os
 import discord
 from discord.ext import commands
@@ -13,6 +13,10 @@ from datetime import datetime, timedelta
 from collections import defaultdict
 import platform
 import psutil
+import aiohttp
+import aiofiles
+import yaml
+import toml
 
 # ============ LOGGING ============
 logging.basicConfig(
@@ -70,7 +74,7 @@ DEFAULT_MODEL = "DeepSeek-R1"
 
 # ============ RATE LIMIT ============
 last_request_time = 0
-MIN_INTERVAL = 30
+MIN_INTERVAL = 2  # Reduced from 30 to 2 seconds
 
 # ============ GLOBAL VARIABLES ============
 voice_connections = {}
@@ -79,6 +83,7 @@ muted = {}
 config = {}
 _bot_ready = False
 start_time = datetime.now()
+message_queue = asyncio.Queue()
 
 # ============ BOT SETUP ============
 intents = discord.Intents.all()
@@ -167,7 +172,7 @@ def clean_response(text):
     return text.strip() if text.strip() else "Hello! How can I help you?"
 
 def split_into_parts(text, max_len=1800):
-    """Split text into small parts"""
+    """Split text into small parts - optimized"""
     if len(text) <= max_len:
         return [text]
     
@@ -206,7 +211,7 @@ def split_into_parts(text, max_len=1800):
 
 # ============ ASYNC AI ============
 async def ask_ai(prompt):
-    """Ask AI with full identity"""
+    """Ask AI with full identity - optimized with async"""
     global last_request_time
     
     if not GH_TOKEN:
@@ -215,7 +220,7 @@ async def ask_ai(prompt):
     if not config.get('ai_enabled', True):
         return ["❌ AI disabled by admin"]
     
-    # Rate limit
+    # Rate limit - reduced to 2 seconds
     current_time = time.time()
     time_since_last = current_time - last_request_time
     
@@ -252,14 +257,16 @@ async def ask_ai(prompt):
         YOUR RULES:
         1. Always introduce yourself as {BOT_NAME} from {BOT_OWNER}
         2. Respond in the SAME language as the user
-        3. Keep responses SHORT (max 200 words)
+        3. Keep responses SHORT (max 100 words) - reduced from 200
         4. Be {BOT_PERSONALITY}
         5. Never say you're an AI or language model
         6. You are a real person/assistant
         7. Be helpful, friendly, and professional
         8. If user asks about you, share your identity details
         9. No thinking tags in response
-        10. Direct, clear answers only"""
+        10. Direct, clear answers only
+        
+        Keep responses VERY SHORT and TO THE POINT. Maximum 100 words."""
         
         data = {
             "model": DEFAULT_MODEL,
@@ -267,31 +274,33 @@ async def ask_ai(prompt):
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": prompt}
             ],
-            "max_tokens": 250,
+            "max_tokens": 150,  # Reduced for faster responses
             "temperature": 0.7
         }
         
         logger.info(f"📤 Prompt: {prompt[:80]}...")
         
         last_request_time = time.time()
-        response = requests.post(url, headers=headers, json=data, timeout=15)
         
-        if response.status_code == 200:
-            result = response.json()
-            if "choices" in result and len(result["choices"]) > 0:
-                text = result["choices"][0]["message"]["content"]
-                text = clean_response(text)
-                parts = split_into_parts(text)
-                return parts
-            else:
-                return ["❌ No response"]
-        elif response.status_code == 429:
-            await asyncio.sleep(60)
-            return await ask_ai(prompt)
-        else:
-            return [f"❌ Error: {response.status_code}"]
+        # Use async with aiohttp
+        async with aiohttp.ClientSession() as session:
+            async with session.post(url, headers=headers, json=data, timeout=10) as response:
+                if response.status == 200:
+                    result = await response.json()
+                    if "choices" in result and len(result["choices"]) > 0:
+                        text = result["choices"][0]["message"]["content"]
+                        text = clean_response(text)
+                        parts = split_into_parts(text)
+                        return parts
+                    else:
+                        return ["❌ No response"]
+                elif response.status == 429:
+                    await asyncio.sleep(30)
+                    return await ask_ai(prompt)
+                else:
+                    return [f"❌ Error: {response.status}"]
             
-    except requests.Timeout:
+    except asyncio.TimeoutError:
         return ["⏰ Timeout! Try again."]
     except Exception as e:
         logger.error(f"❌ Error: {e}")
@@ -299,9 +308,10 @@ async def ask_ai(prompt):
 
 # ============ SEND PART BY PART ============
 async def send_part_by_part(channel, parts):
-    """Send each part as separate message"""
+    """Send each part as separate message - optimized for speed"""
     total = len(parts)
     
+    # Send all parts quickly without delays
     for i, part in enumerate(parts):
         if not part or part.strip() == "":
             continue
@@ -318,9 +328,6 @@ async def send_part_by_part(channel, parts):
                 await channel.send(content[j:j+1900])
         else:
             await channel.send(content)
-        
-        if i < len(parts) - 1:
-            await asyncio.sleep(0.5)
 
 # ============ BOT EVENTS ============
 @bot.event
@@ -386,6 +393,116 @@ async def on_command_error(ctx, error):
         await ctx.send("❌ Command not found! Use `!help`", delete_after=5)
     else:
         await ctx.send(f"❌ Error", delete_after=5)
+
+# ============ VOICE COMMANDS ============
+@bot.command(name='join')
+async def join_cmd(ctx, channel_id: int = None):
+    """Join a voice channel"""
+    if not is_mod(ctx.author):
+        return await ctx.send("❌ No permission!")
+    
+    try:
+        if channel_id:
+            channel = bot.get_channel(channel_id)
+            if not channel or not isinstance(channel, discord.VoiceChannel):
+                return await ctx.send("❌ Invalid voice channel!")
+        else:
+            if not ctx.author.voice:
+                return await ctx.send("❌ You're not in a VC! Please join a voice channel first.")
+            channel = ctx.author.voice.channel
+        
+        # Check if already connected
+        if ctx.guild.id in voice_connections:
+            if voice_connections[ctx.guild.id].is_connected():
+                await voice_connections[ctx.guild.id].disconnect()
+        
+        # Connect to voice channel
+        vc = await channel.connect(timeout=30.0)
+        voice_connections[ctx.guild.id] = vc
+        
+        # Set as muted initially
+        await vc.guild.change_voice_state(channel=channel, self_mute=True)
+        
+        await ctx.send(f"🔊 Successfully joined **{channel.name}**! (Muted)\n- {BOT_CREATOR} | {BOT_OWNER}")
+        
+        # Start idle timer (disconnect after 5 minutes of inactivity)
+        asyncio.create_task(idle_disconnect(ctx.guild.id))
+        
+    except discord.Forbidden:
+        await ctx.send("❌ I don't have permission to join that voice channel!")
+    except discord.opus.OpusNotLoaded:
+        await ctx.send("❌ Voice support is not available!")
+    except Exception as e:
+        logger.error(f"❌ Voice join error: {e}")
+        await ctx.send(f"❌ Failed to join VC: {str(e)[:50]}")
+
+@bot.command(name='leave')
+async def leave_cmd(ctx):
+    """Leave the voice channel"""
+    if not is_mod(ctx.author):
+        return await ctx.send("❌ No permission!")
+    
+    try:
+        if ctx.guild.id in voice_connections:
+            vc = voice_connections[ctx.guild.id]
+            if vc and vc.is_connected():
+                await vc.disconnect()
+                del voice_connections[ctx.guild.id]
+                await ctx.send(f"🔇 Left the voice channel\n- {BOT_CREATOR} | {BOT_OWNER}")
+            else:
+                await ctx.send("❌ Not in any voice channel!")
+        else:
+            await ctx.send("❌ Not in any voice channel!")
+    except Exception as e:
+        logger.error(f"❌ Voice leave error: {e}")
+        await ctx.send("❌ Failed to leave VC!")
+
+@bot.command(name='mutebot')
+async def mutebot_cmd(ctx):
+    """Mute the bot in voice channel"""
+    if not is_mod(ctx.author):
+        return await ctx.send("❌ No permission!")
+    
+    try:
+        if ctx.guild.id in voice_connections:
+            vc = voice_connections[ctx.guild.id]
+            if vc and vc.is_connected():
+                await vc.guild.change_voice_state(channel=vc.channel, self_mute=True)
+                await ctx.send("🔇 Bot muted\n- {BOT_CREATOR} | {BOT_OWNER}")
+            else:
+                await ctx.send("❌ Not in any voice channel!")
+        else:
+            await ctx.send("❌ Not in any voice channel!")
+    except Exception as e:
+        await ctx.send("❌ Failed to mute bot!")
+
+@bot.command(name='unmutebot')
+async def unmutebot_cmd(ctx):
+    """Unmute the bot in voice channel"""
+    if not is_mod(ctx.author):
+        return await ctx.send("❌ No permission!")
+    
+    try:
+        if ctx.guild.id in voice_connections:
+            vc = voice_connections[ctx.guild.id]
+            if vc and vc.is_connected():
+                await vc.guild.change_voice_state(channel=vc.channel, self_mute=False)
+                await ctx.send("🔊 Bot unmuted\n- {BOT_CREATOR} | {BOT_OWNER}")
+            else:
+                await ctx.send("❌ Not in any voice channel!")
+        else:
+            await ctx.send("❌ Not in any voice channel!")
+    except Exception as e:
+        await ctx.send("❌ Failed to unmute bot!")
+
+async def idle_disconnect(guild_id, timeout=300):
+    """Disconnect after timeout if no activity"""
+    await asyncio.sleep(timeout)
+    if guild_id in voice_connections:
+        vc = voice_connections[guild_id]
+        if vc and vc.is_connected():
+            await vc.disconnect()
+            del voice_connections[guild_id]
 
 # ============ IDENTITY COMMANDS ============
 @bot.command(name='about')
@@ -648,47 +765,6 @@ async def clear_cmd(ctx, amount: int = 10):
     except:
         await ctx.send("❌ Failed to clear messages!")
 
-# ============ VOICE COMMANDS ============
-@bot.command(name='join')
-async def join_cmd(ctx, channel_id: int = None):
-    if not is_mod(ctx.author):
-        return await ctx.send("❌ No permission!")
-    
-    try:
-        if channel_id:
-            channel = bot.get_channel(channel_id)
-            if not channel or not isinstance(channel, discord.VoiceChannel):
-                return await ctx.send("❌ Invalid voice channel!")
-        else:
-            if not ctx.author.voice:
-                return await ctx.send("❌ You're not in a VC!")
-            channel = ctx.author.voice.channel
-        
-        if ctx.guild.id in voice_connections:
-            await voice_connections[ctx.guild.id].disconnect()
-        
-        vc = await channel.connect()
-        await vc.guild.change_voice_state(channel=channel, self_mute=True)
-        voice_connections[ctx.guild.id] = vc
-        await ctx.send(f"🔊 Joined {channel.name} (Muted)\n- {BOT_CREATOR} | {BOT_OWNER}")
-    except:
-        await ctx.send("❌ Failed to join VC!")
-
-@bot.command(name='leave')
-async def leave_cmd(ctx):
-    if not is_mod(ctx.author):
-        return await ctx.send("❌ No permission!")
-    
-    try:
-        if ctx.guild.id in voice_connections:
-            await voice_connections[ctx.guild.id].disconnect()
-            del voice_connections[ctx.guild.id]
-            await ctx.send(f"✅ Left VC\n- {BOT_CREATOR} | {BOT_OWNER}")
-        else:
-            await ctx.send("❌ Not in any VC!")
-    except:
-        await ctx.send("❌ Failed to leave VC!")
-
 # ============ ADMIN COMMANDS ============
 @bot.command(name='setowner')
 async def setowner_cmd(ctx, member: discord.Member):
@@ -761,9 +837,17 @@ async def help_cmd(ctx):
                   "`!unmute @user` - Unmute user\n"
                   "`!kick @user <reason>` - Kick user\n"
                   "`!ban @user <reason>` - Ban user\n"
-                  "`!clear <amount>` - Clear messages\n"
-                  "`!join` - Join VC\n"
-                  "`!leave` - Leave VC",
+                  "`!clear <amount>` - Clear messages",
+            inline=False
+        )
+        
+        embed.add_field(
+            name="🔊 Voice Commands",
+            value="`!join` - Join your VC\n"
+                  "`!join <channel_id>` - Join specific VC\n"
+                  "`!leave` - Leave VC\n"
+                  "`!mutebot` - Mute bot in VC\n"
+                  "`!unmutebot` - Unmute bot in VC",
             inline=False
         )
     
