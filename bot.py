@@ -1,4 +1,4 @@
-# bot.py - CAREFULLY Bot - Complete A to Z (Voice + AI + All Features)
+# bot.py - CAREFULLY Bot - Complete Working Code
 import os
 import sys
 import subprocess
@@ -129,18 +129,21 @@ AUTHORIZED_USERS = [
     "TurboIG",
     "turbo.ig",
     "gamerffa3",
-    "carefully",
-    "1202290872994254989"
+    "carefully"
 ]
 
-# ============ BOT SETUP ============
+# ============ BOT SETUP - 100% FIXED ============
+# ✅ ONLY DEFAULT INTENTS - No privileged intents
 intents = discord.Intents.default()
-intents.message_content = True
-intents.voice_states = True
-intents.members = True
-intents.guilds = True
-intents.guild_messages = True
-intents.dm_messages = True
+intents.message_content = True  # ✅ Message content enabled
+intents.voice_states = True     # ✅ Voice support
+
+# ❌ ALL PRIVILEGED INTENTS DISABLED - Inhe portal mein enable karo
+# intents.members = True
+# intents.presences = True
+# intents.guild_messages = True
+# intents.dm_messages = True
+# intents.guilds = True
 
 bot = commands.Bot(command_prefix='!', intents=intents, help_command=None)
 
@@ -151,7 +154,6 @@ muted = {}
 config = {}
 _bot_ready = False
 start_time = datetime.now()
-active_voice_tasks = {}
 
 # ============ CONFIG ============
 def load_config():
@@ -228,12 +230,10 @@ def is_mod(member):
 # ============ LANGUAGE DETECTION ============
 def detect_language(text):
     """Detect language from text - Hindi/English/Roman Hindi"""
-    # Hindi script detection
     hindi_pattern = re.compile(r'[\u0900-\u097F]')
     if hindi_pattern.search(text):
         return 'hi'
     
-    # Roman Hindi words
     roman_hindi_words = ['hai', 'ho', 'hum', 'tum', 'aap', 'mein', 'ka', 'ki', 'ke', 
                         'ko', 'se', 'ne', 'tha', 'thi', 'the', 'hain', 'hu', 'huh',
                         'kya', 'kyu', 'kaise', 'kahan', 'kab', 'kon', 'kisko']
@@ -255,19 +255,15 @@ def text_to_speech(text, language=None):
         if not language:
             language = detect_language(text)
         
-        # Use configured language if available
         if config.get('voice_language'):
             language = config.get('voice_language')
         
-        # Create temporary file
         with tempfile.NamedTemporaryFile(delete=False, suffix='.mp3') as tmp_file:
             temp_path = tmp_file.name
         
-        # Generate speech
         tts = gTTS(text=text, lang=language, slow=False)
         tts.save(temp_path)
         
-        # Convert to WAV for Discord
         try:
             audio = AudioSegment.from_mp3(temp_path)
             wav_path = temp_path.replace('.mp3', '.wav')
@@ -485,6 +481,7 @@ async def on_ready():
 ║     📊 Servers: {len(bot.guilds)}                           
 ║     🆔 Bot ID: {BOT_ID}                                     
 ║     🌍 Voice Lang: {config.get('voice_language', 'hi').upper()}                               
+║     🎭 Style: {config.get('response_style', 'casual').capitalize()}                               
 ║     ⏰ Uptime: {str(uptime).split('.')[0]}                  
 ║     💻 System: {platform.system()} {platform.release()}     
 ║                                                              ║
