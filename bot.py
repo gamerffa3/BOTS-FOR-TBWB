@@ -1,4 +1,4 @@
-# bot.py - CAREFULLY Bot - Complete Working Code
+# bot.py - CAREFULLY Bot - Complete Voice-Only Mode (Sirf Voice Messages)
 import os
 import sys
 import subprocess
@@ -122,7 +122,7 @@ BOT_OWNER = "TurboIG Web"
 BOT_VERSION = "3.0.0"
 BOT_EMOJI = "🎙️"
 BOT_ID = "1521130781978787871"
-BOT_DESCRIPTION = "AI Voice Bot with Real Voice Messages"
+BOT_DESCRIPTION = "AI Voice Bot - Sirf Voice Messages"
 
 # ============ AUTHORIZED USERS ============
 AUTHORIZED_USERS = [
@@ -132,18 +132,10 @@ AUTHORIZED_USERS = [
     "carefully"
 ]
 
-# ============ BOT SETUP - 100% FIXED ============
-# ✅ ONLY DEFAULT INTENTS - No privileged intents
+# ============ BOT SETUP ============
 intents = discord.Intents.default()
-intents.message_content = True  # ✅ Message content enabled
-intents.voice_states = True     # ✅ Voice support
-
-# ❌ ALL PRIVILEGED INTENTS DISABLED - Inhe portal mein enable karo
-# intents.members = True
-# intents.presences = True
-# intents.guild_messages = True
-# intents.dm_messages = True
-# intents.guilds = True
+intents.message_content = True
+intents.voice_states = True
 
 bot = commands.Bot(command_prefix='!', intents=intents, help_command=None)
 
@@ -172,10 +164,10 @@ def load_config():
         'max_warnings': 3,
         'ai_model': "DeepSeek-R1",
         'ai_enabled': True,
-        'auto_join_vc': False,
         'voice_enabled': True,
         'voice_language': 'hi',
-        'response_style': 'casual'
+        'response_style': 'casual',
+        'voice_only': True
     }
     save_config()
 
@@ -307,6 +299,7 @@ async def ask_ai(prompt):
             5. Never say you're an AI
             6. Be helpful and direct
             7. Use emojis sometimes 😊
+            8. Always reply like a human friend
             
             EXAMPLES:
             - User: "kaise ho" → "Main theek hu! Aap kaise ho? 😊"
@@ -415,11 +408,15 @@ async def send_voice_message(channel, text):
         if not guild:
             return None
         
+        # Agar VC mein nahi hai toh join karo
         if guild.id not in voice_connections:
+            # Pehle user ke VC mein join karo
             if hasattr(channel, 'author') and channel.author and channel.author.voice:
                 vc = await channel.author.voice.channel.connect()
                 voice_connections[guild.id] = vc
+                await channel.send(f"🔊 Joined **{channel.author.voice.channel.name}** for voice message!")
             else:
+                await channel.send("❌ I'm not in a voice channel! Use `!joinvc` first.")
                 return None
         
         vc = voice_connections[guild.id]
@@ -482,6 +479,7 @@ async def on_ready():
 ║     🆔 Bot ID: {BOT_ID}                                     
 ║     🌍 Voice Lang: {config.get('voice_language', 'hi').upper()}                               
 ║     🎭 Style: {config.get('response_style', 'casual').capitalize()}                               
+║     🎙️ Mode: Voice-Only                                   
 ║     ⏰ Uptime: {str(uptime).split('.')[0]}                  
 ║     💻 System: {platform.system()} {platform.release()}     
 ║                                                              ║
@@ -495,7 +493,7 @@ async def on_ready():
     await bot.change_presence(
         activity=discord.Activity(
             type=discord.ActivityType.listening,
-            name=f"Voice | @{BOT_NAME}"
+            name=f"Voice-Only | @{BOT_NAME}"
         )
     )
 
@@ -512,7 +510,7 @@ async def on_message(message):
             await message.channel.send(f"❌ You are not authorized to control me!\nOnly {', '.join(AUTHORIZED_USERS)} can control me.")
         return
     
-    # TAG BOT FOR AI VOICE
+    # ==================== TAG BOT FOR AI VOICE (SIRF VOICE) ====================
     if bot.user.mentioned_in(message):
         prompt = message.content.replace(f'<@{bot.user.id}>', '').replace(f'<@!{bot.user.id}>', '').strip()
         
@@ -520,16 +518,24 @@ async def on_message(message):
             await message.channel.send(f"{BOT_EMOJI} Hello! I'm {BOT_NAME}. Tag me with a question! 🎙️")
             return
         
+        # Typing indicator
         async with message.channel.typing():
             parts = await ask_ai(prompt)
             response_text = parts[0] if parts else "Sorry, I couldn't respond."
         
-        await message.channel.send(f"{BOT_EMOJI} {response_text}\n- {BOT_CREATOR}")
+        # ✅ SIRF VOICE - Text nahi bhejna!
+        # await message.channel.send(f"{BOT_EMOJI} {response_text}\n- {BOT_CREATOR}")
         
+        # Sirf Voice message bhejo
         try:
-            await send_voice_message(message.channel, response_text)
+            success = await send_voice_message(message.channel, response_text)
+            if not success:
+                # Agar voice fail ho toh text bhejo (backup)
+                await message.channel.send(f"{BOT_EMOJI} {response_text}\n- {BOT_CREATOR}")
         except Exception as e:
             logger.error(f"❌ Voice failed: {e}")
+            # Backup text
+            await message.channel.send(f"{BOT_EMOJI} {response_text}\n- {BOT_CREATOR}")
         
         return
     
@@ -687,6 +693,7 @@ async def handle_dm_command(message):
         embed.add_field(name="🌍 Language", value=config.get('voice_language', 'hi').upper(), inline=True)
         embed.add_field(name="⏰ Uptime", value=str(datetime.now() - start_time).split('.')[0], inline=True)
         embed.add_field(name="🧠 AI", value="✅ Enabled" if config.get('ai_enabled', True) else "❌ Disabled", inline=True)
+        embed.add_field(name="🎙️ Mode", value="Voice-Only", inline=True)
         embed.add_field(
             name="🔗 Invite Link",
             value=f"https://discord.com/api/oauth2/authorize?client_id={BOT_ID}&permissions=8&scope=bot",
@@ -772,6 +779,24 @@ async def handle_dm_command(message):
             await message.channel.send("❌ AI disabled!")
         return
     
+    # !voicelang
+    if content.startswith('!voicelang'):
+        parts = content.split(' ', 1)
+        if len(parts) < 2:
+            await message.channel.send(f"Current language: **{config.get('voice_language', 'hi').upper()}**\nUse: `!voicelang hi` or `!voicelang en`")
+            return
+        
+        valid_langs = ['hi', 'en', 'es', 'fr', 'de', 'it', 'ja', 'ko', 'ru', 'ar', 'pt', 'zh', 'ta', 'te']
+        
+        if parts[1].lower() not in valid_langs:
+            await message.channel.send(f"❌ Invalid language! Available: {', '.join(valid_langs)}")
+            return
+        
+        config['voice_language'] = parts[1].lower()
+        save_config()
+        await message.channel.send(f"✅ Voice language set to: **{parts[1].upper()}**")
+        return
+    
     # !help
     if content == '!help' or content == '!commands':
         embed = discord.Embed(
@@ -792,21 +817,21 @@ async def handle_dm_command(message):
             value="`!joinvc [server_id]` - Join VC\n"
                   "`!leavevc [server_id]` - Leave VC\n"
                   "`!mute` - Mute bot\n"
-                  "`!unmute` - Unmute bot",
+                  "`!unmute` - Unmute bot\n"
+                  "`!voicelang <lang>` - Voice language",
             inline=False
         )
         embed.add_field(
             name="⚙️ Settings",
             value="`!ai on/off` - Toggle AI\n"
-                  "`!style casual/professional` - Response style\n"
-                  "`!voicelang <lang>` - Voice language",
+                  "`!style casual/professional` - Response style",
             inline=False
         )
         embed.add_field(
             name="💡 Server Commands",
             value="`!joinvc` - Join VC\n"
                   "`!leavevc` - Leave VC\n"
-                  "`@CAREFULLY` - Ask AI with Voice\n"
+                  "`@CAREFULLY` - Ask AI (Voice-Only)\n"
                   "`!voice <text>` - Send voice message\n"
                   "`!ai <question>` - Ask AI\n"
                   "`!about` - About bot\n"
@@ -816,6 +841,7 @@ async def handle_dm_command(message):
         embed.add_field(
             name="🆔 Bot Info",
             value=f"**Bot ID:** `{BOT_ID}`\n"
+                  f"**Mode:** Voice-Only 🎙️\n"
                   f"**Invite Link:**\n"
                   f"`https://discord.com/api/oauth2/authorize?client_id={BOT_ID}&permissions=8&scope=bot`",
             inline=False
@@ -954,7 +980,13 @@ async def ai_cmd(ctx, *, question):
         parts = await ask_ai(question)
         response = parts[0] if parts else "❌ Error"
     
-    await ctx.send(f"{BOT_EMOJI} {response}\n- {BOT_CREATOR}")
+    # Voice-Only Mode - Sirf Voice
+    try:
+        success = await send_voice_message(ctx.channel, response)
+        if not success:
+            await ctx.send(f"{BOT_EMOJI} {response}\n- {BOT_CREATOR}")
+    except:
+        await ctx.send(f"{BOT_EMOJI} {response}\n- {BOT_CREATOR}")
 
 @bot.command(name='ask')
 async def ask_cmd(ctx, *, question):
@@ -975,6 +1007,7 @@ async def about_cmd(ctx):
     embed.add_field(name="📝 Version", value=BOT_VERSION, inline=True)
     embed.add_field(name="🎙️ Voice", value="✅ Enabled" if config.get('voice_enabled', True) else "❌ Disabled", inline=True)
     embed.add_field(name="🌍 Language", value=config.get('voice_language', 'hi').upper(), inline=True)
+    embed.add_field(name="🎙️ Mode", value="Voice-Only", inline=True)
     embed.add_field(name="📊 Servers", value=len(bot.guilds), inline=True)
     embed.add_field(name="⏰ Uptime", value=str(datetime.now() - start_time).split('.')[0], inline=True)
     embed.add_field(
@@ -995,6 +1028,7 @@ async def ping_cmd(ctx):
     )
     embed.add_field(name="🤖 Bot", value=f"{BOT_NAME} v{BOT_VERSION}", inline=True)
     embed.add_field(name="🎙️ Voice", value="✅ Ready" if config.get('voice_enabled', True) else "❌ Disabled", inline=True)
+    embed.add_field(name="🎙️ Mode", value="Voice-Only", inline=True)
     await ctx.send(embed=embed)
 
 @bot.command(name='invite')
@@ -1234,8 +1268,8 @@ async def help_cmd(ctx):
     )
     
     embed.add_field(
-        name="🎙️ Voice Commands",
-        value="`@CAREFULLY <question>` - Ask AI with Voice\n"
+        name="🎙️ Voice Commands (Voice-Only)",
+        value="`@CAREFULLY <question>` - Ask AI (Sirf Voice)\n"
               "`!voice <text>` - Send voice message\n"
               "`!joinvc` - Join voice channel\n"
               "`!leavevc` - Leave voice channel\n"
@@ -1245,7 +1279,7 @@ async def help_cmd(ctx):
     
     embed.add_field(
         name="🤖 AI Commands",
-        value="`!ai <question>` - Ask AI (text only)\n"
+        value="`!ai <question>` - Ask AI (Voice-Only)\n"
               "`!ask <question>` - Ask AI (alias)\n"
               "`!style casual/professional` - Response style",
         inline=False
@@ -1273,9 +1307,9 @@ async def help_cmd(ctx):
     )
     
     embed.add_field(
-        name="🌍 Languages",
-        value="Hindi, Roman Hindi, English (Auto-detect)\n"
-              "Set: `hi`, `en`, `es`, `fr`, `de`, `it`, `ja`, `ko`, `ru`, `ar`",
+        name="🎙️ Voice Mode",
+        value="✅ **Voice-Only Mode** - Bot sirf voice messages bhejega!\n"
+              "Text reply nahi aayega, sirf VC mein voice sunai degi!",
         inline=False
     )
     
@@ -1283,6 +1317,7 @@ async def help_cmd(ctx):
         name="🆔 Bot Info",
         value=f"**Bot ID:** `{BOT_ID}`\n"
               f"**Version:** {BOT_VERSION}\n"
+              f"**Mode:** Voice-Only 🎙️\n"
               f"**Invite Link:**\n"
               f"`https://discord.com/api/oauth2/authorize?client_id={BOT_ID}&permissions=8&scope=bot`",
         inline=False
@@ -1305,6 +1340,7 @@ if __name__ == "__main__":
 ║     🆔 Bot ID: {BOT_ID}                                     
 ║     🌍 Voice Lang: {config.get('voice_language', 'hi').upper()}                               
 ║     🎭 Style: {config.get('response_style', 'casual').capitalize()}                               
+║     🎙️ Mode: Voice-Only                                   
 ║                                                              ║
 ║     🔗 Invite Link:                                         ║
 ║     https://discord.com/api/oauth2/authorize?              ║
