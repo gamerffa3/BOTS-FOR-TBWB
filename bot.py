@@ -1,4 +1,4 @@
-# bot.py - Complete Discord Bot (FULLY WORKING)
+# bot.py - FINAL WORKING CODE (Intents Disabled)
 import os
 import sys
 import subprocess
@@ -125,14 +125,14 @@ AUTHORIZED_USERS = [
     "carefully"
 ]
 
-# ============ BOT SETUP - FIXED ============
-# ✅ Correct way to setup intents
+# ============ BOT SETUP - FIXED (No Privileged Intents) ============
+# ✅ Only use DEFAULT intents - NO privileged intents
 intents = discord.Intents.default()
-intents.message_content = True
-intents.guilds = True
-intents.members = True  # ✅ CORRECT - not guild_members
-intents.voice_states = True
-intents.dm_messages = True
+intents.message_content = True  # Only this is needed
+
+# ❌ DON'T enable these if not enabled in developer portal
+# intents.members = True
+# intents.presences = True
 
 bot = commands.Bot(command_prefix='!', intents=intents, help_command=None)
 
@@ -201,15 +201,6 @@ def is_admin(member):
     if is_server_owner(member) or is_authorized(member):
         return True
     if hasattr(member, 'guild_permissions') and member.guild_permissions.administrator:
-        return True
-    return False
-
-def is_mod(member):
-    if not member:
-        return False
-    if is_admin(member):
-        return True
-    if hasattr(member, 'guild_permissions') and member.guild_permissions.manage_messages:
         return True
     return False
 
