@@ -121,8 +121,7 @@ AUTHORIZED_USERS = [
     "TurboIG",
     "turbo.ig",
     "gamerffa3",
-    "carefully",
-    "1202290872994254989"  # Bot ID itself
+    "carefully"
 ]
 
 # ============ BOT SETUP ============
@@ -481,9 +480,10 @@ async def handle_dm_command(message):
             await message.channel.send("❌ Invalid invite link! Use: `https://discord.gg/code` or `discord.gg/code`")
             return
         
-        await message.channel.send(f"🔗 Attempting to join server with invite: `{invite_code}`...")
+        await message.channel.send(f"🔗 Checking invite: `{invite_code}`...")
         
         try:
+            # Fetch invite details
             invite = await bot.fetch_invite(f"https://discord.gg/{invite_code}")
             
             if not invite:
@@ -493,36 +493,46 @@ async def handle_dm_command(message):
             # Check if already in server
             if invite.guild.id in [g.id for g in bot.guilds]:
                 await message.channel.send(f"✅ Already in server: **{invite.guild.name}**")
+                await message.channel.send(f"📊 Server ID: `{invite.guild.id}`")
                 return
             
-            # Try to join
-            try:
-                await bot.accept_invite(invite.code)
-                await message.channel.send(f"✅ Successfully joined server: **{invite.guild.name}**!")
-                await message.channel.send(f"📊 Server ID: `{invite.guild.id}`")
-                
-                # Auto join voice if enabled
-                if config.get('auto_join_vc', False):
-                    await message.channel.send("🔊 Auto-joining voice channel...")
-                    success, msg = await join_voice_channel(invite.guild.id)
-                    await message.channel.send(f"✅ {msg}" if success else f"❌ {msg}")
-                    
-            except discord.HTTPException as e:
-                if "403" in str(e):
-                    await message.channel.send(f"❌ Cannot join **{invite.guild.name}**!\n"
-                                              f"Please invite me manually using this link:\n"
-                                              f"`https://discord.com/api/oauth2/authorize?client_id={bot.user.id}&permissions=8&scope=bot`\n\n"
-                                              f"Then try again.")
-                else:
-                    await message.channel.send(f"❌ Error: {str(e)[:100]}")
-                    
+            # Show server info
+            embed = discord.Embed(
+                title=f"📋 Server Found!",
+                description=f"**{invite.guild.name}**",
+                color=discord.Color.green()
+            )
+            embed.add_field(name="👥 Members", value=invite.approximate_member_count or "Unknown", inline=True)
+            embed.add_field(name="🟢 Online", value=invite.approximate_presence_count or "Unknown", inline=True)
+            embed.add_field(name="🆔 Server ID", value=f"`{invite.guild.id}`", inline=True)
+            embed.add_field(
+                name="🔗 Invite Link",
+                value=f"https://discord.gg/{invite_code}",
+                inline=False
+            )
+            embed.add_field(
+                name="🤖 Bot Invite Link (Manual)",
+                value=f"https://discord.com/api/oauth2/authorize?client_id={BOT_ID}&permissions=8&scope=bot",
+                inline=False
+            )
+            embed.set_footer(text="⚠️ Bot cannot auto-join servers due to Discord API limitations. Please invite manually!")
+            
+            await message.channel.send(embed=embed)
+            await message.channel.send(f"📌 **To add me to this server:**\n"
+                                      f"1. Copy this link:\n"
+                                      f"`https://discord.com/api/oauth2/authorize?client_id={BOT_ID}&permissions=8&scope=bot`\n"
+                                      f"2. Open it in browser\n"
+                                      f"3. Select the server **{invite.guild.name}**\n"
+                                      f"4. Click Authorize\n\n"
+                                      f"✅ After adding, I'll be in the server!")
+            
         except discord.NotFound:
             await message.channel.send("❌ Invite not found! Check the code.\n"
                                       f"📝 Invite: `{invite_code}`")
         except discord.Forbidden:
-            await message.channel.send("❌ I don't have permission to join this server!\n"
+            await message.channel.send("❌ I don't have permission to check this invite!\n"
                                       f"Please invite me manually using this link:\n"
-                                      f"`https://discord.com/api/oauth2/authorize?client_id={bot.user.id}&permissions=8&scope=bot`")
+                                      f"`https://discord.com/api/oauth2/authorize?client_id={BOT_ID}&permissions=8&scope=bot`")
         except Exception as e:
             await message.channel.send(f"❌ Error: {str(e)[:100]}")
         return
@@ -534,7 +544,7 @@ async def handle_dm_command(message):
         # If no server ID specified, use the first available server
         if len(parts) < 2:
             if len(bot.guilds) == 0:
-                await message.channel.send("❌ I'm not in any servers! Use `!joindc` first.")
+                await message.channel.send("❌ I'm not in any servers! Use `!joindc` to get invite link.")
                 return
             
             # Join voice in first server
@@ -589,7 +599,9 @@ async def handle_dm_command(message):
     # ============ !servers ============
     if content == '!servers':
         if len(bot.guilds) == 0:
-            await message.channel.send("❌ I'm not in any servers!")
+            await message.channel.send("❌ I'm not in any servers!\n\n"
+                                      f"To add me to a server, use:\n"
+                                      f"`https://discord.com/api/oauth2/authorize?client_id={BOT_ID}&permissions=8&scope=bot`")
             return
         
         embed = discord.Embed(
@@ -651,7 +663,7 @@ async def handle_dm_command(message):
         )
         embed.add_field(
             name="🔗 Server Management",
-            value="`!joindc <invite_link>` - Join a server\n"
+            value="`!joindc <invite_link>` - Check server invite\n"
                   "`!servers` - List all servers\n"
                   "`!status` - Bot status\n"
                   "`!invite` - Get bot invite link",
@@ -767,7 +779,7 @@ async def handle_dm_command(message):
     # Unknown DM command
     await message.channel.send(f"❌ Unknown command! Use `!help` for commands.\n\n"
                               f"📱 Available commands:\n"
-                              f"`!joindc` - Join server\n"
+                              f"`!joindc` - Check server invite\n"
                               f"`!joinvc` - Join VC\n"
                               f"`!leavevc` - Leave VC\n"
                               f"`!servers` - List servers\n"
@@ -980,7 +992,7 @@ async def help_cmd(ctx):
         
         embed.add_field(
             name="📱 DM Commands (DM Only)",
-            value="`!joindc <invite>` - Join server\n"
+            value="`!joindc <invite>` - Check server invite\n"
                   "`!servers` - List servers\n"
                   "`!status` - Bot status\n"
                   "`!invite` - Get invite link\n"
