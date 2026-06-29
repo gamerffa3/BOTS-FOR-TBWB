@@ -1,4 +1,4 @@
-# bot.py - CAREFULLY Bot - Complete Auto-Install Everything
+# bot.py - CAREFULLY Bot - Deep Voice Hindi Default
 import os
 import sys
 import subprocess
@@ -20,12 +20,11 @@ import tempfile
 # ============ SUPPRESS ALL WARNINGS ============
 warnings.filterwarnings("ignore")
 
-# ============ AUTO INSTALL EVERYTHING ON EVERY START ============
+# ============ AUTO INSTALL EVERYTHING ON START ============
 def install_all_dependencies():
-    """Install ALL dependencies on every bot start - New system pe bhi kaam karega"""
+    """Install ALL dependencies on every bot start"""
     print("🔧 Installing ALL dependencies...")
     
-    # Sab packages jo chahiye
     packages = [
         'discord.py[voice]',
         'requests',
@@ -39,10 +38,10 @@ def install_all_dependencies():
         'lxml',
         'gTTS',
         'pydub',
-        'ffmpeg-python'
+        'ffmpeg-python',
+        'pyttsx3'
     ]
     
-    # Har package ko install karo
     for package in packages:
         print(f"📦 Installing {package}...")
         try:
@@ -55,16 +54,12 @@ def install_all_dependencies():
         except Exception as e:
             print(f"⚠️ Could not install {package}: {e}")
     
-    # FFmpeg system level install
     install_ffmpeg()
-    
-    # Opus install for voice
     install_opus()
-    
     print("✅ All dependencies installed!")
 
 def install_ffmpeg():
-    """Install FFmpeg system-wide - Har OS ke liye"""
+    """Install FFmpeg system-wide"""
     if shutil.which("ffmpeg") is not None:
         print("✅ FFmpeg already installed!")
         return True
@@ -72,7 +67,6 @@ def install_ffmpeg():
     print("📦 Installing FFmpeg...")
     try:
         if sys.platform.startswith('linux'):
-            # Linux (Ubuntu/Debian/GitHub Actions)
             subprocess.check_call(["sudo", "apt-get", "update", "-qq"], 
                                  stdout=subprocess.DEVNULL, 
                                  stderr=subprocess.DEVNULL)
@@ -82,19 +76,13 @@ def install_ffmpeg():
             print("✅ FFmpeg installed on Linux!")
             return True
         elif sys.platform == 'darwin':
-            # macOS
             subprocess.check_call(["brew", "install", "ffmpeg"],
                                  stdout=subprocess.DEVNULL,
                                  stderr=subprocess.DEVNULL)
             print("✅ FFmpeg installed on macOS!")
             return True
-        elif sys.platform.startswith('win'):
-            # Windows - Download and install
-            print("⚠️ Windows: Please install FFmpeg manually")
-            print("Download from: https://ffmpeg.org/download.html")
-            return False
         else:
-            print(f"⚠️ Unknown OS: {sys.platform}")
+            print("⚠️ Please install FFmpeg manually")
             return False
     except Exception as e:
         print(f"⚠️ Could not install FFmpeg: {e}")
@@ -117,13 +105,12 @@ def install_opus():
             print("✅ Opus installed on macOS!")
             return True
         else:
-            print("⚠️ Opus not installed, voice may not work")
+            print("⚠️ Opus not installed")
             return False
     except:
         print("⚠️ Could not install Opus")
         return False
 
-# ============ RUN INSTALLATION ============
 install_all_dependencies()
 
 # ============ IMPORT ALL LIBRARIES ============
@@ -161,7 +148,7 @@ BOT_OWNER = "TurboIG Web"
 BOT_VERSION = "3.0.0"
 BOT_EMOJI = "🎙️"
 BOT_ID = "1521130781978787871"
-BOT_DESCRIPTION = "AI Voice Bot - Complete Auto-Install"
+BOT_DESCRIPTION = "AI Voice Bot - Deep Voice Hindi Default"
 
 # ============ AUTHORIZED USERS ============
 AUTHORIZED_USERS = [
@@ -205,7 +192,8 @@ def load_config():
         'ai_model': "DeepSeek-R1",
         'ai_enabled': True,
         'voice_enabled': True,
-        'voice_language': 'hi',
+        'voice_language': 'hi',  # ✅ Hindi Default
+        'voice_gender': 'male',  # ✅ Male/Deep Voice
         'response_style': 'casual',
         'voice_only': True
     }
@@ -261,44 +249,56 @@ def is_mod(member):
 
 # ============ LANGUAGE DETECTION ============
 def detect_language(text):
-    """Detect language from text - Hindi/English/Roman Hindi"""
+    """Detect language - Default Hindi"""
+    # Hindi script detection
     hindi_pattern = re.compile(r'[\u0900-\u097F]')
     if hindi_pattern.search(text):
         return 'hi'
     
+    # Roman Hindi words
     roman_hindi_words = ['hai', 'ho', 'hum', 'tum', 'aap', 'mein', 'ka', 'ki', 'ke', 
                         'ko', 'se', 'ne', 'tha', 'thi', 'the', 'hain', 'hu', 'huh',
-                        'kya', 'kyu', 'kaise', 'kahan', 'kab', 'kon', 'kisko']
+                        'kya', 'kyu', 'kaise', 'kahan', 'kab', 'kon', 'kisko', 'namaste']
     words = text.lower().split()
     roman_hindi_count = sum(1 for word in words if word in roman_hindi_words)
     
     if len(words) > 0 and roman_hindi_count > len(words) * 0.15:
         return 'hi'
     
-    return 'en'
+    # ✅ Default Hindi
+    return 'hi'
 
-# ============ TEXT TO SPEECH ============
-def text_to_speech(text, language=None):
-    """Convert text to speech using gTTS"""
+# ============ DEEP VOICE TEXT TO SPEECH ============
+def text_to_speech(text, language='hi'):
+    """Convert text to speech - Deep Voice (Hindi Default)"""
     if not config.get('voice_enabled', True):
         return None
     
     try:
-        if not language:
-            language = detect_language(text)
+        # Use configured language
+        language = config.get('voice_language', 'hi')
         
-        if config.get('voice_language'):
-            language = config.get('voice_language')
-        
+        # Create temporary file
         with tempfile.NamedTemporaryFile(delete=False, suffix='.mp3') as tmp_file:
             temp_path = tmp_file.name
         
-        tts = gTTS(text=text, lang=language, slow=False)
+        # ✅ Deep Voice Settings - Slower, Deeper
+        tts = gTTS(
+            text=text, 
+            lang=language, 
+            slow=True,  # ✅ Slow = Deeper Voice
+            tld='com'   # Default domain
+        )
         tts.save(temp_path)
         
-        # Convert to WAV for better Discord support
+        # Convert to WAV for Discord
         try:
             audio = AudioSegment.from_mp3(temp_path)
+            
+            # ✅ Deep Voice Effect - Lower pitch
+            # Reduce speed for deeper voice
+            audio = audio.speedup(playback_speed=0.9)  # Slightly slower
+            
             wav_path = temp_path.replace('.mp3', '.wav')
             audio.export(wav_path, format='wav')
             os.remove(temp_path)
@@ -312,7 +312,7 @@ def text_to_speech(text, language=None):
 
 # ============ AI FUNCTIONS ============
 async def ask_ai(prompt):
-    """Ask AI with voice support"""
+    """Ask AI with voice support - Hindi Default"""
     if not GH_TOKEN:
         return ["❌ GitHub Token not configured!"]
     
@@ -329,31 +329,26 @@ async def ask_ai(prompt):
         
         style = config.get('response_style', 'casual')
         
-        if style == 'casual':
-            system_prompt = f"""You are {BOT_NAME}, a friendly assistant from {BOT_OWNER}.
-            
-            RULES:
-            1. Reply in SAME language as user (Hindi/English/Roman Hindi)
-            2. Keep responses SHORT (max 30 words)
-            3. Be friendly and casual like a friend
-            4. Use Roman Hindi for Hindi responses
-            5. Never say you're an AI
-            6. Be helpful and direct
-            7. Use emojis sometimes 😊
-            8. Always reply like a human friend
-            
-            EXAMPLES:
-            - User: "kaise ho" → "Main theek hu! Aap kaise ho? 😊"
-            - User: "what's up" → "All good! What about you? 😄"
-            - User: "namaste" → "Namaste! Kaise ho aap? 🙏"""
-        else:
-            system_prompt = f"""You are {BOT_NAME}, a professional assistant from {BOT_OWNER}.
-            
-            RULES:
-            1. Reply in SAME language as user
-            2. Keep responses professional and clear
-            3. Be helpful and informative
-            4. Never say you're an AI"""
+        # ✅ Hindi Default System Prompt
+        system_prompt = f"""You are {BOT_NAME}, a friendly assistant from {BOT_OWNER}.
+
+        IMPORTANT RULES:
+        1. NEVER show your thinking process or analysis
+        2. Just give direct, short answers (max 30 words)
+        3. Reply in HINDI (Roman Hindi) by default
+        4. If user writes in English, reply in English
+        5. Be friendly and casual like a friend
+        6. Use Roman Hindi for Hindi responses
+        7. Never say you're an AI
+        8. Use emojis sometimes 😊
+        9. Be helpful and direct
+
+        EXAMPLES:
+        - User: "kaise ho" → "Main theek hu! Aap kaise ho? 😊"
+        - User: "what's up" → "All good! What about you? 😄"
+        - User: "hello" → "Namaste! Kaise ho aap? 🙏"
+        - User: "yooo" → "Hey! Kya haal hai? 😄"
+        - User: "hi" → "Namaste! Main CAREFULLY hu. Kaise madad kar sakta hu? 😊"""
         
         data = {
             "model": config.get('ai_model', 'DeepSeek-R1'),
@@ -361,7 +356,7 @@ async def ask_ai(prompt):
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": prompt}
             ],
-            "max_tokens": 80,
+            "max_tokens": 60,
             "temperature": 0.7
         }
         
@@ -440,7 +435,7 @@ async def leave_voice_channel(guild_id):
         return False, str(e)
 
 async def send_voice_message(channel, text):
-    """Send voice message in voice channel"""
+    """Send deep voice message in voice channel"""
     if not config.get('voice_enabled', True):
         return False
     
@@ -449,9 +444,8 @@ async def send_voice_message(channel, text):
         if not guild:
             return False
         
-        # Check if bot is in VC
+        # ✅ Auto-join if not in VC
         if guild.id not in voice_connections:
-            # Try to auto-join
             if hasattr(channel, 'author') and channel.author and channel.author.voice:
                 vc = await channel.author.voice.channel.connect()
                 voice_connections[guild.id] = vc
@@ -466,22 +460,20 @@ async def send_voice_message(channel, text):
             await channel.send("❌ Bot is not connected to voice channel!")
             return False
         
-        # Convert text to speech
-        language = detect_language(text)
+        # ✅ Deep Voice - Hindi default
+        language = config.get('voice_language', 'hi')
         audio_path = text_to_speech(text, language)
         if not audio_path:
-            await channel.send("❌ Failed to generate voice! Check TTS installation.")
+            await channel.send("❌ Failed to generate voice!")
             return False
         
         # Play audio
         if vc.is_playing():
             vc.stop()
         
-        # Create audio source
         audio_source = discord.FFmpegPCMAudio(audio_path, executable='ffmpeg')
         vc.play(audio_source)
         
-        # Cleanup after play
         def cleanup():
             try:
                 if os.path.exists(audio_path):
@@ -489,7 +481,6 @@ async def send_voice_message(channel, text):
             except:
                 pass
         
-        # Wait for playback
         while vc.is_playing():
             await asyncio.sleep(0.1)
         
@@ -521,7 +512,7 @@ async def on_ready():
     print(f"""
 ╔══════════════════════════════════════════════════════════════╗
 ║                                                              ║
-║     🎙️ {BOT_NAME} v{BOT_VERSION} - AI Voice Bot            
+║     🎙️ {BOT_NAME} v{BOT_VERSION} - Deep Voice Bot          
 ║                                                              ║
 ║     📝 {BOT_DESCRIPTION}                                    ║
 ║     👤 Creator: {BOT_CREATOR}                               
@@ -529,7 +520,7 @@ async def on_ready():
 ║     📊 Servers: {len(bot.guilds)}                           
 ║     🆔 Bot ID: {BOT_ID}                                     
 ║     🌍 Voice Lang: {config.get('voice_language', 'hi').upper()}                               
-║     🎭 Style: {config.get('response_style', 'casual').capitalize()}                               
+║     🎭 Voice: Deep/Male                                   
 ║     🎙️ Mode: Voice-Only                                   
 ║     ⏰ Uptime: {str(uptime).split('.')[0]}                  
 ║     💻 System: {platform.system()} {platform.release()}     
@@ -544,7 +535,7 @@ async def on_ready():
     await bot.change_presence(
         activity=discord.Activity(
             type=discord.ActivityType.listening,
-            name=f"Voice-Only | @{BOT_NAME}"
+            name=f"Deep Voice | @{BOT_NAME}"
         )
     )
 
@@ -553,13 +544,12 @@ async def on_message(message):
     if message.author.bot:
         return
     
-    # DM CONTROL
     if isinstance(message.channel, discord.DMChannel):
         if is_authorized(message.author):
             await handle_dm_command(message)
         return
     
-    # TAG BOT FOR AI VOICE
+    # TAG BOT - Voice Only
     if bot.user.mentioned_in(message):
         prompt = message.content.replace(f'<@{bot.user.id}>', '').replace(f'<@!{bot.user.id}>', '').strip()
         
@@ -567,20 +557,19 @@ async def on_message(message):
             await message.channel.send(f"{BOT_EMOJI} Hello! I'm {BOT_NAME}. Tag me with a question! 🎙️")
             return
         
-        # Show typing
         async with message.channel.typing():
             parts = await ask_ai(prompt)
             response_text = parts[0] if parts else "Sorry, I couldn't respond."
         
-        # Try voice first
+        # ✅ Sirf Voice - No Text
         try:
             success = await send_voice_message(message.channel, response_text)
             if not success:
-                # If voice fails, send text
-                await message.channel.send(f"{BOT_EMOJI} {response_text}\n- {BOT_CREATOR}")
+                # Backup text if voice fails
+                await message.channel.send(f"{BOT_EMOJI} {response_text}")
         except Exception as e:
             logger.error(f"❌ Voice failed: {e}")
-            await message.channel.send(f"{BOT_EMOJI} {response_text}\n- {BOT_CREATOR}")
+            await message.channel.send(f"{BOT_EMOJI} {response_text}")
         
         return
     
@@ -597,7 +586,6 @@ async def on_command_error(ctx, error):
 async def handle_dm_command(message):
     content = message.content.strip()
     
-    # !joindc
     if content.startswith('!joindc'):
         parts = content.split(' ', 1)
         if len(parts) < 2:
@@ -643,7 +631,6 @@ async def handle_dm_command(message):
             await message.channel.send(f"❌ Error: {str(e)[:100]}")
         return
     
-    # !joinvc
     if content.startswith('!joinvc'):
         parts = content.split(' ', 1)
         
@@ -673,7 +660,6 @@ async def handle_dm_command(message):
             await message.channel.send("❌ Invalid server ID!")
         return
     
-    # !leavevc
     if content.startswith('!leavevc'):
         parts = content.split(' ', 1)
         
@@ -698,7 +684,6 @@ async def handle_dm_command(message):
             await message.channel.send("❌ Invalid server ID!")
         return
     
-    # !servers
     if content == '!servers':
         if len(bot.guilds) == 0:
             await message.channel.send("❌ I'm not in any servers!")
@@ -722,7 +707,6 @@ async def handle_dm_command(message):
         await message.channel.send(embed=embed)
         return
     
-    # !status
     if content == '!status':
         embed = discord.Embed(
             title=f"{BOT_EMOJI} Bot Status",
@@ -734,6 +718,7 @@ async def handle_dm_command(message):
         embed.add_field(name="🔊 Voice Connections", value=len(voice_connections), inline=True)
         embed.add_field(name="🎙️ Voice", value="✅ Enabled" if config.get('voice_enabled', True) else "❌ Disabled", inline=True)
         embed.add_field(name="🌍 Language", value=config.get('voice_language', 'hi').upper(), inline=True)
+        embed.add_field(name="🎭 Voice Type", value="Deep/Male", inline=True)
         embed.add_field(name="⏰ Uptime", value=str(datetime.now() - start_time).split('.')[0], inline=True)
         embed.add_field(name="🧠 AI", value="✅ Enabled" if config.get('ai_enabled', True) else "❌ Disabled", inline=True)
         embed.add_field(
@@ -745,13 +730,11 @@ async def handle_dm_command(message):
         await message.channel.send(embed=embed)
         return
     
-    # !invite
     if content == '!invite':
         await message.channel.send(f"🔗 **Invite {BOT_NAME}:**\n"
                                   f"`https://discord.com/api/oauth2/authorize?client_id={BOT_ID}&permissions=8&scope=bot`")
         return
     
-    # !mute
     if content == '!mute':
         count = 0
         for guild_id, vc in voice_connections.items():
@@ -768,7 +751,6 @@ async def handle_dm_command(message):
             await message.channel.send("❌ Not in any voice channel!")
         return
     
-    # !unmute
     if content == '!unmute':
         count = 0
         for guild_id, vc in voice_connections.items():
@@ -785,26 +767,24 @@ async def handle_dm_command(message):
             await message.channel.send("❌ Not in any voice channel!")
         return
     
-    # !style
     if content.startswith('!style'):
         parts = content.split(' ', 1)
         if len(parts) < 2:
-            await message.channel.send(f"Current style: **{config.get('response_style', 'casual')}**\nUse: `!style casual` or `!style professional`")
+            await message.channel.send(f"Current style: **{config.get('response_style', 'casual')}**")
             return
         
         if parts[1].lower() in ['casual', 'fun', 'friendly']:
             config['response_style'] = 'casual'
             save_config()
-            await message.channel.send("✅ Style set to: **Casual** 😊")
-        elif parts[1].lower() in ['professional', 'formal', 'serious']:
+            await message.channel.send("✅ Style: Casual 😊")
+        elif parts[1].lower() in ['professional', 'formal']:
             config['response_style'] = 'professional'
             save_config()
-            await message.channel.send("✅ Style set to: **Professional** 👔")
+            await message.channel.send("✅ Style: Professional 👔")
         else:
             await message.channel.send("❌ Use: `!style casual` or `!style professional`")
         return
     
-    # !ai on/off
     if content.startswith('!ai'):
         parts = content.split(' ', 1)
         if len(parts) < 2:
@@ -821,43 +801,41 @@ async def handle_dm_command(message):
             await message.channel.send("❌ AI disabled!")
         return
     
-    # !voicelang
     if content.startswith('!voicelang'):
         parts = content.split(' ', 1)
         if len(parts) < 2:
-            await message.channel.send(f"Current language: **{config.get('voice_language', 'hi').upper()}**\nUse: `!voicelang hi` or `!voicelang en`")
+            await message.channel.send(f"Language: **{config.get('voice_language', 'hi').upper()}**")
             return
         
         valid_langs = ['hi', 'en', 'es', 'fr', 'de', 'it', 'ja', 'ko', 'ru', 'ar', 'pt', 'zh', 'ta', 'te']
         
         if parts[1].lower() not in valid_langs:
-            await message.channel.send(f"❌ Invalid language! Available: {', '.join(valid_langs)}")
+            await message.channel.send(f"❌ Invalid! Available: {', '.join(valid_langs)}")
             return
         
         config['voice_language'] = parts[1].lower()
         save_config()
-        await message.channel.send(f"✅ Voice language set to: **{parts[1].upper()}**")
+        await message.channel.send(f"✅ Language: **{parts[1].upper()}**")
         return
     
-    # !help
     if content == '!help' or content == '!commands':
         embed = discord.Embed(
             title=f"{BOT_EMOJI} DM Commands",
-            description=f"Control {BOT_NAME} via DM",
+            description=f"Control {BOT_NAME} - Deep Voice Hindi Default",
             color=discord.Color.blue()
         )
         embed.add_field(
             name="🔗 Server Management",
-            value="`!joindc <invite>` - Check server invite\n"
-                  "`!servers` - List all servers\n"
+            value="`!joindc <invite>` - Check server\n"
+                  "`!servers` - List servers\n"
                   "`!status` - Bot status\n"
-                  "`!invite` - Get invite link",
+                  "`!invite` - Invite link",
             inline=False
         )
         embed.add_field(
             name="🔊 Voice Control",
-            value="`!joinvc [server_id]` - Join VC\n"
-                  "`!leavevc [server_id]` - Leave VC\n"
+            value="`!joinvc [id]` - Join VC\n"
+                  "`!leavevc [id]` - Leave VC\n"
                   "`!mute` - Mute bot\n"
                   "`!unmute` - Unmute bot\n"
                   "`!voicelang <lang>` - Voice language",
@@ -866,49 +844,42 @@ async def handle_dm_command(message):
         embed.add_field(
             name="⚙️ Settings",
             value="`!ai on/off` - Toggle AI\n"
-                  "`!style casual/professional` - Response style",
+                  "`!style casual/professional` - Style",
             inline=False
         )
         embed.add_field(
-            name="💡 Server Commands",
-            value="`!joinvc` - Join VC\n"
-                  "`!leavevc` - Leave VC\n"
-                  "`@CAREFULLY` - Ask AI (Voice-Only)\n"
-                  "`!voice <text>` - Send voice message\n"
-                  "`!ai <question>` - Ask AI\n"
-                  "`!about` - About bot\n"
-                  "`!ping` - Check latency",
+            name="🎙️ Voice Features",
+            value="✅ **Deep Voice** - Slow, deep male voice\n"
+                  "✅ **Hindi Default** - Roman Hindi preferred\n"
+                  "✅ **Auto Language** - Hindi/English",
             inline=False
         )
         embed.add_field(
             name="🆔 Bot Info",
             value=f"**Bot ID:** `{BOT_ID}`\n"
-                  f"**Mode:** Voice-Only 🎙️\n"
-                  f"**Invite Link:**\n"
-                  f"`https://discord.com/api/oauth2/authorize?client_id={BOT_ID}&permissions=8&scope=bot`",
+                  f"**Voice:** Deep/Male 🎙️\n"
+                  f"**Language:** {config.get('voice_language', 'hi').upper()}\n"
+                  f"**Invite:** `https://discord.com/api/oauth2/authorize?client_id={BOT_ID}&permissions=8&scope=bot`",
             inline=False
         )
         embed.set_footer(text=f"Owner: {BOT_OWNER}")
         await message.channel.send(embed=embed)
         return
     
-    await message.channel.send(f"❌ Unknown command! Use `!help`")
+    await message.channel.send(f"❌ Unknown! Use `!help`")
 
 # ============ SERVER COMMANDS ============
-
-# ============ VOICE COMMANDS ============
 @bot.command(name='joinvc')
 async def joinvc_cmd(ctx, channel_id: int = None):
-    """Join voice channel"""
     if not ctx.author.voice and not channel_id:
-        await ctx.send("❌ You're not in a voice channel! Use `!joinvc <channel_id>`")
+        await ctx.send("❌ You're not in VC! Use `!joinvc <channel_id>`")
         return
     
     try:
         if channel_id:
             channel = bot.get_channel(channel_id)
             if not channel or not isinstance(channel, discord.VoiceChannel):
-                await ctx.send("❌ Invalid voice channel ID!")
+                await ctx.send("❌ Invalid VC ID!")
                 return
         else:
             channel = ctx.author.voice.channel
@@ -924,14 +895,13 @@ async def joinvc_cmd(ctx, channel_id: int = None):
         voice_connections[ctx.guild.id] = vc
         await vc.guild.change_voice_state(channel=channel, self_mute=True)
         
-        await ctx.send(f"🔊 Joined **{channel.name}**!\n- {BOT_CREATOR}")
+        await ctx.send(f"🔊 Joined **{channel.name}**!")
         
     except Exception as e:
-        await ctx.send(f"❌ Failed to join VC: {str(e)[:50]}")
+        await ctx.send(f"❌ Error: {str(e)[:50]}")
 
 @bot.command(name='leavevc')
 async def leavevc_cmd(ctx):
-    """Leave voice channel"""
     try:
         if ctx.guild.id in voice_connections:
             vc = voice_connections[ctx.guild.id]
@@ -940,68 +910,34 @@ async def leavevc_cmd(ctx):
                     vc.stop()
                 await vc.disconnect()
                 del voice_connections[ctx.guild.id]
-                await ctx.send(f"🔇 Left voice channel\n- {BOT_CREATOR}")
+                await ctx.send(f"🔇 Left VC")
             else:
-                await ctx.send("❌ Not in any voice channel!")
+                await ctx.send("❌ Not in VC!")
         else:
-            await ctx.send("❌ Not in any voice channel!")
-    except Exception as e:
-        await ctx.send(f"❌ Failed to leave VC: {str(e)[:50]}")
-
-@bot.command(name='mutebot')
-async def mutebot_cmd(ctx):
-    """Mute bot in VC"""
-    try:
-        if ctx.guild.id in voice_connections:
-            vc = voice_connections[ctx.guild.id]
-            if vc and vc.is_connected():
-                await vc.guild.change_voice_state(channel=vc.channel, self_mute=True)
-                await ctx.send("🔇 Bot muted\n- {BOT_CREATOR}")
-            else:
-                await ctx.send("❌ Not in any voice channel!")
-        else:
-            await ctx.send("❌ Not in any voice channel!")
-    except Exception as e:
-        await ctx.send(f"❌ Error: {str(e)[:50]}")
-
-@bot.command(name='unmutebot')
-async def unmutebot_cmd(ctx):
-    """Unmute bot in VC"""
-    try:
-        if ctx.guild.id in voice_connections:
-            vc = voice_connections[ctx.guild.id]
-            if vc and vc.is_connected():
-                await vc.guild.change_voice_state(channel=vc.channel, self_mute=False)
-                await ctx.send("🔊 Bot unmuted\n- {BOT_CREATOR}")
-            else:
-                await ctx.send("❌ Not in any voice channel!")
-        else:
-            await ctx.send("❌ Not in any voice channel!")
+            await ctx.send("❌ Not in VC!")
     except Exception as e:
         await ctx.send(f"❌ Error: {str(e)[:50]}")
 
 @bot.command(name='voice')
 async def voice_cmd(ctx, *, text):
-    """Send voice message"""
     if not config.get('voice_enabled', True):
-        await ctx.send("❌ Voice disabled by admin!")
+        await ctx.send("❌ Voice disabled!")
         return
     
     if len(text) > 500:
-        await ctx.send("❌ Text too long! Max 500 characters.")
+        await ctx.send("❌ Too long! Max 500 characters.")
         return
     
     async with ctx.typing():
         success = await send_voice_message(ctx.channel, text)
         
     if success:
-        await ctx.send(f"🎙️ Voice message sent!\n- {BOT_CREATOR}")
+        await ctx.send(f"🎙️ Voice sent!")
     else:
-        await ctx.send("❌ Failed to send voice message! Join a voice channel first.")
+        await ctx.send("❌ Failed! Join VC first.")
 
 @bot.command(name='voicelang')
 async def voicelang_cmd(ctx, lang):
-    """Set voice language (hi/en/es/fr)"""
     if not is_admin(ctx.author):
         await ctx.send("❌ Admin only!")
         return
@@ -1009,17 +945,16 @@ async def voicelang_cmd(ctx, lang):
     valid_langs = ['hi', 'en', 'es', 'fr', 'de', 'it', 'ja', 'ko', 'ru', 'ar', 'pt', 'zh', 'ta', 'te']
     
     if lang.lower() not in valid_langs:
-        await ctx.send(f"❌ Invalid language! Available: {', '.join(valid_langs)}")
+        await ctx.send(f"❌ Invalid! Available: {', '.join(valid_langs)}")
         return
     
     config['voice_language'] = lang.lower()
     save_config()
-    await ctx.send(f"✅ Voice language set to: **{lang.upper()}**")
+    await ctx.send(f"✅ Language: **{lang.upper()}**")
 
 # ============ AI COMMANDS ============
 @bot.command(name='ai')
 async def ai_cmd(ctx, *, question):
-    """Ask AI (text only)"""
     if len(question) > 1000:
         await ctx.send("❌ Too long!")
         return
@@ -1028,17 +963,15 @@ async def ai_cmd(ctx, *, question):
         parts = await ask_ai(question)
         response = parts[0] if parts else "❌ Error"
     
-    # Try voice first
     try:
         success = await send_voice_message(ctx.channel, response)
         if not success:
-            await ctx.send(f"{BOT_EMOJI} {response}\n- {BOT_CREATOR}")
+            await ctx.send(f"{BOT_EMOJI} {response}")
     except:
-        await ctx.send(f"{BOT_EMOJI} {response}\n- {BOT_CREATOR}")
+        await ctx.send(f"{BOT_EMOJI} {response}")
 
 @bot.command(name='ask')
 async def ask_cmd(ctx, *, question):
-    """Ask AI (alias)"""
     await ai_cmd(ctx, question=question)
 
 # ============ BOT COMMANDS ============
@@ -1046,7 +979,7 @@ async def ask_cmd(ctx, *, question):
 async def about_cmd(ctx):
     embed = discord.Embed(
         title=f"{BOT_EMOJI} About {BOT_NAME}",
-        description=f"Your AI Voice Assistant from **{BOT_OWNER}**",
+        description=f"Deep Voice AI Assistant from **{BOT_OWNER}**",
         color=discord.Color.blue()
     )
     embed.add_field(name="🤖 Name", value=f"{BOT_NAME} ({BOT_NICKNAME})", inline=True)
@@ -1055,7 +988,7 @@ async def about_cmd(ctx):
     embed.add_field(name="📝 Version", value=BOT_VERSION, inline=True)
     embed.add_field(name="🎙️ Voice", value="✅ Enabled" if config.get('voice_enabled', True) else "❌ Disabled", inline=True)
     embed.add_field(name="🌍 Language", value=config.get('voice_language', 'hi').upper(), inline=True)
-    embed.add_field(name="🎙️ Mode", value="Voice-Only", inline=True)
+    embed.add_field(name="🎭 Voice Type", value="Deep/Male", inline=True)
     embed.add_field(name="📊 Servers", value=len(bot.guilds), inline=True)
     embed.add_field(name="⏰ Uptime", value=str(datetime.now() - start_time).split('.')[0], inline=True)
     embed.add_field(
@@ -1075,7 +1008,7 @@ async def ping_cmd(ctx):
         color=discord.Color.green()
     )
     embed.add_field(name="🤖 Bot", value=f"{BOT_NAME} v{BOT_VERSION}", inline=True)
-    embed.add_field(name="🎙️ Voice", value="✅ Ready" if config.get('voice_enabled', True) else "❌ Disabled", inline=True)
+    embed.add_field(name="🎙️ Voice", value="✅ Deep Voice Ready", inline=True)
     await ctx.send(embed=embed)
 
 @bot.command(name='invite')
@@ -1086,7 +1019,7 @@ async def invite_cmd(ctx):
 @bot.command(name='servers')
 async def servers_cmd(ctx):
     if not is_authorized(ctx.author):
-        return await ctx.send("❌ Only authorized users can use this!")
+        return await ctx.send("❌ Authorized users only!")
     
     embed = discord.Embed(
         title="📊 My Servers",
@@ -1107,7 +1040,6 @@ async def servers_cmd(ctx):
 
 @bot.command(name='style')
 async def style_cmd(ctx, style):
-    """Set response style (casual/professional)"""
     if not is_admin(ctx.author):
         await ctx.send("❌ Admin only!")
         return
@@ -1115,11 +1047,11 @@ async def style_cmd(ctx, style):
     if style.lower() in ['casual', 'fun', 'friendly']:
         config['response_style'] = 'casual'
         save_config()
-        await ctx.send("✅ Style set to: **Casual** 😊")
-    elif style.lower() in ['professional', 'formal', 'serious']:
+        await ctx.send("✅ Style: Casual 😊")
+    elif style.lower() in ['professional', 'formal']:
         config['response_style'] = 'professional'
         save_config()
-        await ctx.send("✅ Style set to: **Professional** 👔")
+        await ctx.send("✅ Style: Professional 👔")
     else:
         await ctx.send("❌ Use: `!style casual` or `!style professional`")
 
@@ -1215,7 +1147,7 @@ async def mute_cmd(ctx, member: discord.Member, time: int = 300, *, reason="No r
         return await ctx.send("❌ Time must be 1-86400 seconds!")
     
     if await mute_user(member, time, reason):
-        await ctx.send(f"🔇 {member.mention} muted for {time}s\n- {BOT_CREATOR} | {BOT_OWNER}")
+        await ctx.send(f"🔇 {member.mention} muted for {time}s\n- {BOT_CREATOR}")
     else:
         await ctx.send("❌ Failed to mute!")
 
@@ -1229,7 +1161,7 @@ async def unmute_cmd(ctx, member: discord.Member):
         if mute_role:
             await member.remove_roles(mute_role)
         del muted[member.id]
-        await ctx.send(f"🔊 {member.mention} unmuted!\n- {BOT_CREATOR} | {BOT_OWNER}")
+        await ctx.send(f"🔊 {member.mention} unmuted!\n- {BOT_CREATOR}")
     else:
         await ctx.send(f"❌ {member.mention} is not muted!")
 
@@ -1240,7 +1172,7 @@ async def kick_cmd(ctx, member: discord.Member, *, reason="No reason"):
     
     try:
         await member.kick(reason=reason)
-        await ctx.send(f"👢 {member.mention} kicked!\nReason: {reason}\n- {BOT_CREATOR} | {BOT_OWNER}")
+        await ctx.send(f"👢 {member.mention} kicked!\nReason: {reason}\n- {BOT_CREATOR}")
     except:
         await ctx.send("❌ Failed to kick!")
 
@@ -1251,7 +1183,7 @@ async def ban_cmd(ctx, member: discord.Member, *, reason="No reason"):
     
     try:
         await member.ban(reason=reason)
-        await ctx.send(f"🔨 {member.mention} banned!\nReason: {reason}\n- {BOT_CREATOR} | {BOT_OWNER}")
+        await ctx.send(f"🔨 {member.mention} banned!\nReason: {reason}\n- {BOT_CREATOR}")
     except:
         await ctx.send("❌ Failed to ban!")
 
@@ -1290,7 +1222,7 @@ async def serverlock_cmd(ctx):
         except:
             continue
     
-    await ctx.send(f"🔒 Server Locked!\n- {BOT_CREATOR} | {BOT_OWNER}")
+    await ctx.send(f"🔒 Server Locked!\n- {BOT_CREATOR}")
 
 @bot.command(name='serverunlock')
 async def serverunlock_cmd(ctx):
@@ -1303,20 +1235,20 @@ async def serverunlock_cmd(ctx):
         except:
             continue
     
-    await ctx.send(f"🔓 Server Unlocked!\n- {BOT_CREATOR} | {BOT_OWNER}")
+    await ctx.send(f"🔓 Server Unlocked!\n- {BOT_CREATOR}")
 
 # ============ HELP COMMAND ============
 @bot.command(name='help')
 async def help_cmd(ctx):
     embed = discord.Embed(
         title=f"{BOT_EMOJI} {BOT_NAME} Commands",
-        description=f"Your AI Voice Assistant from **{BOT_OWNER}**",
+        description=f"Deep Voice AI Assistant from **{BOT_OWNER}**",
         color=discord.Color.blue()
     )
     
     embed.add_field(
-        name="🎙️ Voice Commands (Voice-Only)",
-        value="`@CAREFULLY <question>` - Ask AI (Sirf Voice)\n"
+        name="🎙️ Voice Commands",
+        value="`@CAREFULLY <question>` - Ask AI (Voice-Only)\n"
               "`!voice <text>` - Send voice message\n"
               "`!joinvc` - Join voice channel\n"
               "`!leavevc` - Leave voice channel\n"
@@ -1326,7 +1258,7 @@ async def help_cmd(ctx):
     
     embed.add_field(
         name="🤖 AI Commands",
-        value="`!ai <question>` - Ask AI (Voice-Only)\n"
+        value="`!ai <question>` - Ask AI\n"
               "`!ask <question>` - Ask AI (alias)\n"
               "`!style casual/professional` - Response style",
         inline=False
@@ -1345,6 +1277,15 @@ async def help_cmd(ctx):
     )
     
     embed.add_field(
+        name="🎭 Voice Features",
+        value="✅ **Deep Voice** - Slow, deep male voice\n"
+              "✅ **Hindi Default** - Roman Hindi preferred\n"
+              "✅ **Auto Language** - Hindi/English\n"
+              "✅ **Voice-Only** - Sirf voice messages",
+        inline=False
+    )
+    
+    embed.add_field(
         name="📌 Info",
         value="`!about` - About the bot\n"
               "`!ping` - Check latency\n"
@@ -1354,17 +1295,11 @@ async def help_cmd(ctx):
     )
     
     embed.add_field(
-        name="🎙️ Voice Mode",
-        value="✅ **Voice-Only Mode** - Bot sirf voice messages bhejega!\n"
-              "Text reply nahi aayega, sirf VC mein voice sunai degi!",
-        inline=False
-    )
-    
-    embed.add_field(
         name="🆔 Bot Info",
         value=f"**Bot ID:** `{BOT_ID}`\n"
               f"**Version:** {BOT_VERSION}\n"
-              f"**Mode:** Voice-Only 🎙️\n"
+              f"**Voice:** Deep/Male 🎙️\n"
+              f"**Language:** {config.get('voice_language', 'hi').upper()}\n"
               f"**Invite Link:**\n"
               f"`https://discord.com/api/oauth2/authorize?client_id={BOT_ID}&permissions=8&scope=bot`",
         inline=False
@@ -1379,14 +1314,14 @@ if __name__ == "__main__":
         print(f"""
 ╔══════════════════════════════════════════════════════════════╗
 ║                                                              ║
-║     🎙️ {BOT_NAME} v{BOT_VERSION} - AI Voice Bot            
+║     🎙️ {BOT_NAME} v{BOT_VERSION} - Deep Voice Bot          
 ║                                                              ║
 ║     📝 {BOT_DESCRIPTION}                                    ║
 ║     👤 Creator: {BOT_CREATOR}                               
 ║     🌐 Owner: {BOT_OWNER}                                   
 ║     🆔 Bot ID: {BOT_ID}                                     
 ║     🌍 Voice Lang: {config.get('voice_language', 'hi').upper()}                               
-║     🎭 Style: {config.get('response_style', 'casual').capitalize()}                               
+║     🎭 Voice: Deep/Male                                   
 ║     🎙️ Mode: Voice-Only                                   
 ║                                                              ║
 ║     🔗 Invite Link:                                         ║
