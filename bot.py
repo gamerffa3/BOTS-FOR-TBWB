@@ -1,85 +1,95 @@
-# bot.py - Complete Discord Bot with Full AI Identity + Auto Voice Support
+# bot.py - Complete Discord Bot with Auto Install Everything on Every Start
 import os
+import sys
+import subprocess
+import importlib
+import shutil
+import warnings
+
+# ============ SUPPRESS ALL WARNINGS ============
+warnings.filterwarnings("ignore")
+
+# ============ AUTO INSTALL EVERYTHING ON START ============
+def install_all_dependencies():
+    """Install ALL dependencies on every bot start"""
+    print("🔧 Installing ALL dependencies...")
+    
+    # List of ALL required packages
+    packages = [
+        'discord.py[voice]',
+        'requests',
+        'aiohttp',
+        'psutil',
+        'PyNaCl',
+        'youtube-dl',
+        'pynacl',
+        'libnacl'
+    ]
+    
+    # Install each package
+    for package in packages:
+        print(f"📦 Installing {package}...")
+        try:
+            subprocess.check_call(
+                [sys.executable, "-m", "pip", "install", "--upgrade", package, "--quiet"],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL
+            )
+            print(f"✅ {package} installed!")
+        except:
+            print(f"⚠️ Could not install {package}")
+    
+    # Install FFmpeg (system level)
+    install_ffmpeg()
+    
+    print("✅ All dependencies installed!")
+
+def install_ffmpeg():
+    """Install FFmpeg system-wide"""
+    if shutil.which("ffmpeg") is not None:
+        print("✅ FFmpeg already installed!")
+        return True
+    
+    print("📦 Installing FFmpeg...")
+    try:
+        if sys.platform.startswith('linux'):
+            # For GitHub Actions / Ubuntu
+            subprocess.check_call(["sudo", "apt-get", "update", "-qq"], 
+                                 stdout=subprocess.DEVNULL, 
+                                 stderr=subprocess.DEVNULL)
+            subprocess.check_call(["sudo", "apt-get", "install", "-y", "ffmpeg"],
+                                 stdout=subprocess.DEVNULL,
+                                 stderr=subprocess.DEVNULL)
+            print("✅ FFmpeg installed!")
+            return True
+        elif sys.platform == 'darwin':
+            subprocess.check_call(["brew", "install", "ffmpeg"],
+                                 stdout=subprocess.DEVNULL,
+                                 stderr=subprocess.DEVNULL)
+            print("✅ FFmpeg installed!")
+            return True
+        else:
+            print("⚠️ Please install FFmpeg manually")
+            return False
+    except:
+        print("⚠️ Could not install FFmpeg")
+        return False
+
+# ============ RUN INSTALLATION ============
+install_all_dependencies()
+
+# ============ NOW IMPORT ALL LIBRARIES ============
 import discord
 from discord.ext import commands
 import requests
 import json
 import logging
-import sys
 import asyncio
 import time
 import re
 from datetime import datetime, timedelta
 from collections import defaultdict
 import platform
-import subprocess
-import importlib
-import shutil
-
-# ============ AUTO INSTALL ALL DEPENDENCIES ============
-def install_package(package):
-    """Auto install missing packages"""
-    try:
-        importlib.import_module(package)
-        return True
-    except ImportError:
-        print(f"📦 Installing {package}...")
-        subprocess.check_call([sys.executable, "-m", "pip", "install", package, "--quiet"])
-        return True
-
-def install_ffmpeg():
-    """Auto install FFmpeg if not found"""
-    if shutil.which("ffmpeg") is not None:
-        print("✅ FFmpeg is already installed!")
-        return True
-    
-    print("📦 Installing FFmpeg...")
-    
-    # Check operating system
-    if sys.platform.startswith('linux'):
-        # For Linux (Ubuntu/Debian)
-        try:
-            subprocess.check_call(["sudo", "apt-get", "update", "-qq"])
-            subprocess.check_call(["sudo", "apt-get", "install", "-y", "ffmpeg"])
-            print("✅ FFmpeg installed successfully!")
-            return True
-        except:
-            print("⚠️ Could not install FFmpeg automatically on Linux")
-            return False
-    
-    elif sys.platform == 'darwin':
-        # For macOS
-        try:
-            subprocess.check_call(["brew", "install", "ffmpeg"])
-            print("✅ FFmpeg installed successfully!")
-            return True
-        except:
-            print("⚠️ Could not install FFmpeg automatically on macOS")
-            return False
-    
-    else:
-        print("⚠️ Please install FFmpeg manually for this OS")
-        return False
-
-# Install all required Python packages
-print("🔧 Checking and installing dependencies...")
-
-# Essential packages
-required_packages = ['psutil', 'aiohttp', 'PyNaCl']
-for package in required_packages:
-    install_package(package)
-
-# Install voice support
-try:
-    importlib.import_module('discord.voice')
-except:
-    print("📦 Installing discord.py with voice support...")
-    subprocess.check_call([sys.executable, "-m", "pip", "install", "discord.py[voice]", "--quiet"])
-
-# Install FFmpeg
-install_ffmpeg()
-
-# Now import after installation
 import psutil
 import aiohttp
 
@@ -106,7 +116,7 @@ if not GH_TOKEN:
     print("❌ GH_TOKEN not set! AI will not work!")
     exit(1)
 
-# ============ BOT / AI IDENTITY ============
+# ============ BOT IDENTITY ============
 BOT_NAME = "CAREFULLY"
 BOT_NICKNAME = "Carefully"
 BOT_AGE = "2.0"
@@ -124,7 +134,7 @@ BOT_BIRTHDAY = "June 28, 2026"
 BOT_TEAM = "TurboIG Web Development Team"
 BOT_EMOJI = "🤖"
 
-# ============ SYSTEM DETAILS ============
+# ============ SYSTEM INFO ============
 SYSTEM_INFO = {
     "OS": platform.system(),
     "OS Version": platform.release(),
@@ -139,7 +149,7 @@ DEFAULT_MODEL = "DeepSeek-R1"
 
 # ============ RATE LIMIT ============
 last_request_time = 0
-MIN_INTERVAL = 2  # Reduced for faster responses
+MIN_INTERVAL = 2
 
 # ============ GLOBAL VARIABLES ============
 voice_connections = {}
@@ -229,14 +239,12 @@ def is_mod(member):
 
 # ============ HELPERS ============
 def clean_response(text):
-    """Clean AI response - remove thinking tags"""
     text = re.sub(r'<think>.*?</think>', '', text, flags=re.DOTALL)
     text = re.sub(r'<[^>]+>', '', text)
     text = '\n'.join(line.strip() for line in text.split('\n') if line.strip())
     return text.strip() if text.strip() else "Hello! How can I help you?"
 
 def split_into_parts(text, max_len=1800):
-    """Split text into small parts - optimized"""
     if len(text) <= max_len:
         return [text]
     
@@ -275,7 +283,6 @@ def split_into_parts(text, max_len=1800):
 
 # ============ ASYNC AI ============
 async def ask_ai(prompt):
-    """Ask AI with full identity - optimized with async"""
     global last_request_time
     
     if not GH_TOKEN:
@@ -284,13 +291,11 @@ async def ask_ai(prompt):
     if not config.get('ai_enabled', True):
         return ["❌ AI disabled by admin"]
     
-    # Rate limit - reduced to 2 seconds
     current_time = time.time()
     time_since_last = current_time - last_request_time
     
     if time_since_last < MIN_INTERVAL:
         wait_time = MIN_INTERVAL - time_since_last
-        logger.info(f"⏳ Waiting {wait_time:.0f}s...")
         await asyncio.sleep(wait_time)
     
     try:
@@ -338,15 +343,12 @@ async def ask_ai(prompt):
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": prompt}
             ],
-            "max_tokens": 150,  # Reduced for faster responses
+            "max_tokens": 150,
             "temperature": 0.7
         }
         
-        logger.info(f"📤 Prompt: {prompt[:80]}...")
-        
         last_request_time = time.time()
         
-        # Use async with aiohttp
         async with aiohttp.ClientSession() as session:
             async with session.post(url, headers=headers, json=data, timeout=10) as response:
                 if response.status == 200:
@@ -372,10 +374,8 @@ async def ask_ai(prompt):
 
 # ============ SEND PART BY PART ============
 async def send_part_by_part(channel, parts):
-    """Send each part as separate message - optimized for speed"""
     total = len(parts)
     
-    # Send all parts quickly without delays
     for i, part in enumerate(parts):
         if not part or part.strip() == "":
             continue
@@ -434,15 +434,12 @@ async def on_message(message):
     if message.author.bot:
         return
     
-    # AI Reply on Tag
     if bot.user.mentioned_in(message):
         prompt = message.content.replace(f'<@{bot.user.id}>', '').replace(f'<@!{bot.user.id}>', '').strip()
         
         if not prompt:
             await message.channel.send(f"{BOT_EMOJI} Hello! I'm {BOT_NAME}, your AI assistant from {BOT_OWNER}. Ask me anything! 🤖\n- {BOT_CREATOR}")
             return
-        
-        logger.info(f"📥 Tag: {prompt[:80]}...")
         
         async with message.channel.typing():
             parts = await ask_ai(prompt)
@@ -475,34 +472,22 @@ async def join_cmd(ctx, channel_id: int = None):
                 return await ctx.send("❌ You're not in a VC! Please join a voice channel first.")
             channel = ctx.author.voice.channel
         
-        # Check if already connected
         if ctx.guild.id in voice_connections:
             if voice_connections[ctx.guild.id].is_connected():
                 await voice_connections[ctx.guild.id].disconnect()
                 del voice_connections[ctx.guild.id]
         
-        # Connect to voice channel
         vc = await channel.connect(timeout=30.0)
         voice_connections[ctx.guild.id] = vc
         
-        # Set as muted initially
         await vc.guild.change_voice_state(channel=channel, self_mute=True)
         
         await ctx.send(f"🔊 Successfully joined **{channel.name}**! (Muted)\n- {BOT_CREATOR} | {BOT_OWNER}")
         
-        # Start idle timer (disconnect after 5 minutes of inactivity)
         asyncio.create_task(idle_disconnect(ctx.guild.id))
         
     except discord.Forbidden:
         await ctx.send("❌ I don't have permission to join that voice channel!")
-    except discord.opus.OpusNotLoaded:
-        await ctx.send("❌ Voice support is not available! Installing opus...")
-        # Try to install opus
-        try:
-            subprocess.check_call([sys.executable, "-m", "pip", "install", "discord.py[voice]", "--quiet"])
-            await ctx.send("✅ Voice support installed! Please try !join again.")
-        except:
-            await ctx.send("❌ Failed to install voice support!")
     except Exception as e:
         logger.error(f"❌ Voice join error: {e}")
         await ctx.send(f"❌ Failed to join VC: {str(e)[:50]}")
@@ -528,46 +513,7 @@ async def leave_cmd(ctx):
         logger.error(f"❌ Voice leave error: {e}")
         await ctx.send("❌ Failed to leave VC!")
 
-@bot.command(name='mutebot')
-async def mutebot_cmd(ctx):
-    """Mute the bot in voice channel"""
-    if not is_mod(ctx.author):
-        return await ctx.send("❌ No permission!")
-    
-    try:
-        if ctx.guild.id in voice_connections:
-            vc = voice_connections[ctx.guild.id]
-            if vc and vc.is_connected():
-                await vc.guild.change_voice_state(channel=vc.channel, self_mute=True)
-                await ctx.send("🔇 Bot muted\n- {BOT_CREATOR} | {BOT_OWNER}")
-            else:
-                await ctx.send("❌ Not in any voice channel!")
-        else:
-            await ctx.send("❌ Not in any voice channel!")
-    except Exception as e:
-        await ctx.send("❌ Failed to mute bot!")
-
-@bot.command(name='unmutebot')
-async def unmutebot_cmd(ctx):
-    """Unmute the bot in voice channel"""
-    if not is_mod(ctx.author):
-        return await ctx.send("❌ No permission!")
-    
-    try:
-        if ctx.guild.id in voice_connections:
-            vc = voice_connections[ctx.guild.id]
-            if vc and vc.is_connected():
-                await vc.guild.change_voice_state(channel=vc.channel, self_mute=False)
-                await ctx.send("🔊 Bot unmuted\n- {BOT_CREATOR} | {BOT_OWNER}")
-            else:
-                await ctx.send("❌ Not in any voice channel!")
-        else:
-            await ctx.send("❌ Not in any voice channel!")
-    except Exception as e:
-        await ctx.send("❌ Failed to unmute bot!")
-
 async def idle_disconnect(guild_id, timeout=300):
-    """Disconnect after timeout if no activity"""
     await asyncio.sleep(timeout)
     if guild_id in voice_connections:
         vc = voice_connections[guild_id]
@@ -575,10 +521,9 @@ async def idle_disconnect(guild_id, timeout=300):
             await vc.disconnect()
             del voice_connections[guild_id]
 
-# ============ IDENTITY COMMANDS ============
+# ============ COMMANDS ============
 @bot.command(name='about')
 async def about_cmd(ctx):
-    """About the bot"""
     embed = discord.Embed(
         title=f"{BOT_EMOJI} About {BOT_NAME}",
         description=f"Your friendly AI assistant from **{BOT_OWNER}**",
@@ -592,17 +537,14 @@ async def about_cmd(ctx):
     embed.add_field(name="🧠 Model", value=DEFAULT_MODEL, inline=True)
     embed.add_field(name="💬 Languages", value=BOT_LANGUAGES, inline=False)
     embed.add_field(name="🎭 Personality", value=BOT_PERSONALITY, inline=False)
-    embed.add_field(name="🎯 Purpose", value=BOT_PURPOSE, inline=False)
     embed.add_field(name="💡 Motto", value=f"*{BOT_MOTTO}*", inline=False)
     embed.add_field(name="📊 Servers", value=len(bot.guilds), inline=True)
-    embed.add_field(name="👥 Users", value=sum(g.member_count for g in bot.guilds), inline=True)
     embed.add_field(name="⏰ Uptime", value=str(datetime.now() - start_time).split('.')[0], inline=True)
     embed.set_footer(text=f"{BOT_OWNER} • {BOT_NAME}")
     await ctx.send(embed=embed)
 
 @bot.command(name='whoami')
 async def whoami_cmd(ctx):
-    """Who is the bot?"""
     embed = discord.Embed(
         title=f"{BOT_EMOJI} I am {BOT_NAME}!",
         description=f"Your AI assistant from **{BOT_OWNER}**",
@@ -617,29 +559,8 @@ async def whoami_cmd(ctx):
     embed.set_footer(text=f"Version {BOT_VERSION}")
     await ctx.send(embed=embed)
 
-# ============ SYSTEM COMMANDS ============
-@bot.command(name='system')
-async def system_cmd(ctx):
-    """Bot system info"""
-    if not is_admin(ctx.author):
-        return await ctx.send("❌ Admin only!")
-    
-    embed = discord.Embed(
-        title="💻 System Information",
-        color=discord.Color.blue()
-    )
-    embed.add_field(name="🖥️ OS", value=f"{SYSTEM_INFO['OS']} {SYSTEM_INFO['OS Version']}", inline=True)
-    embed.add_field(name="🐍 Python", value=SYSTEM_INFO['Python Version'], inline=True)
-    embed.add_field(name="💾 Processor", value=SYSTEM_INFO['Processor'][:30], inline=True)
-    embed.add_field(name="📡 Hostname", value=SYSTEM_INFO['Hostname'], inline=True)
-    embed.add_field(name="🤖 Bot", value=f"{BOT_NAME} v{BOT_VERSION}", inline=True)
-    embed.add_field(name="🧠 Model", value=DEFAULT_MODEL, inline=True)
-    embed.set_footer(text=f"{BOT_OWNER}")
-    await ctx.send(embed=embed)
-
 @bot.command(name='ping')
 async def ping_cmd(ctx):
-    """Check latency"""
     latency = round(bot.latency * 1000)
     embed = discord.Embed(
         title="🏓 Pong!",
@@ -653,7 +574,6 @@ async def ping_cmd(ctx):
 
 @bot.command(name='uptime')
 async def uptime_cmd(ctx):
-    """Bot uptime"""
     uptime = datetime.now() - start_time
     days = uptime.days
     hours, remainder = divmod(uptime.seconds, 3600)
@@ -673,10 +593,8 @@ async def uptime_cmd(ctx):
     embed.set_footer(text=f"Started: {start_time.strftime('%Y-%m-%d %H:%M:%S')}")
     await ctx.send(embed=embed)
 
-# ============ AI COMMANDS ============
 @bot.command(name='ai')
 async def ai_cmd(ctx, *, question):
-    """Ask AI"""
     if len(question) > 1000:
         await ctx.send("❌ Too long!")
         return
@@ -687,8 +605,102 @@ async def ai_cmd(ctx, *, question):
 
 @bot.command(name='ask')
 async def ask_cmd(ctx, *, question):
-    """Ask AI (alias of !ai)"""
     await ai_cmd(ctx, question=question)
+
+@bot.command(name='system')
+async def system_cmd(ctx):
+    if not is_admin(ctx.author):
+        return await ctx.send("❌ Admin only!")
+    
+    embed = discord.Embed(
+        title="💻 System Information",
+        color=discord.Color.blue()
+    )
+    embed.add_field(name="🖥️ OS", value=f"{SYSTEM_INFO['OS']} {SYSTEM_INFO['OS Version']}", inline=True)
+    embed.add_field(name="🐍 Python", value=SYSTEM_INFO['Python Version'], inline=True)
+    embed.add_field(name="💾 Processor", value=SYSTEM_INFO['Processor'][:30], inline=True)
+    embed.add_field(name="📡 Hostname", value=SYSTEM_INFO['Hostname'], inline=True)
+    embed.add_field(name="🤖 Bot", value=f"{BOT_NAME} v{BOT_VERSION}", inline=True)
+    embed.add_field(name="🧠 Model", value=DEFAULT_MODEL, inline=True)
+    embed.set_footer(text=f"{BOT_OWNER}")
+    await ctx.send(embed=embed)
+
+# ============ HELP COMMAND ============
+@bot.command(name='help')
+async def help_cmd(ctx):
+    embed = discord.Embed(
+        title=f"{BOT_EMOJI} {BOT_NAME} Commands",
+        description=f"Your AI Assistant from **{BOT_OWNER}**\n*{BOT_MOTTO}*",
+        color=discord.Color.blue()
+    )
+    
+    embed.add_field(
+        name="📌 Tag Bot",
+        value=f"`@{BOT_NAME} <question>` - Ask AI by tagging",
+        inline=False
+    )
+    
+    embed.add_field(
+        name="🤖 AI Commands",
+        value="`!ai <question>` - Ask AI\n"
+              "`!ask <question>` - Ask AI (alias)\n"
+              "`!about` - About the bot\n"
+              "`!whoami` - Who is the bot?\n"
+              "`!ping` - Check latency\n"
+              "`!uptime` - Bot uptime",
+        inline=False
+    )
+    
+    if is_mod(ctx.author):
+        embed.add_field(
+            name="🛡️ Moderation",
+            value="`!warn @user <reason>` - Warn user\n"
+                  "`!warnings @user` - View warnings\n"
+                  "`!mute @user <time> <reason>` - Mute user\n"
+                  "`!unmute @user` - Unmute user\n"
+                  "`!kick @user <reason>` - Kick user\n"
+                  "`!ban @user <reason>` - Ban user\n"
+                  "`!clear <amount>` - Clear messages",
+            inline=False
+        )
+        
+        embed.add_field(
+            name="🔊 Voice Commands",
+            value="`!join` - Join your VC\n"
+                  "`!join <channel_id>` - Join specific VC\n"
+                  "`!leave` - Leave VC\n"
+                  "`!mutebot` - Mute bot in VC\n"
+                  "`!unmutebot` - Unmute bot in VC",
+            inline=False
+        )
+    
+    if is_admin(ctx.author) or is_server_owner(ctx.author):
+        embed.add_field(
+            name="⚙️ Admin",
+            value="`!setowner @user` - Set bot owner\n"
+                  "`!system` - System info\n"
+                  "`!serverlock` - Lock server\n"
+                  "`!serverunlock` - Unlock server",
+            inline=False
+        )
+    
+    embed.add_field(
+        name="💡 Info",
+        value=f"**Creator:** {BOT_CREATOR}\n**Owner:** {BOT_OWNER}\n**Version:** {BOT_VERSION}\n**Model:** {DEFAULT_MODEL}",
+        inline=False
+    )
+    
+    embed.set_footer(text=f"{BOT_MOTTO} • {BOT_OWNER}")
+    await ctx.send(embed=embed)
+
+@bot.command(name='setowner')
+async def setowner_cmd(ctx, member: discord.Member):
+    if not is_server_owner(ctx.author):
+        return await ctx.send("❌ Only server owner can use this!")
+    
+    config['owner_id'] = member.id
+    save_config()
+    await ctx.send(f"✅ {member.mention} is now the bot owner!\n- {BOT_CREATOR}")
 
 # ============ MOD COMMANDS ============
 @bot.command(name='warn')
@@ -836,16 +848,6 @@ async def clear_cmd(ctx, amount: int = 10):
     except:
         await ctx.send("❌ Failed to clear messages!")
 
-# ============ ADMIN COMMANDS ============
-@bot.command(name='setowner')
-async def setowner_cmd(ctx, member: discord.Member):
-    if not is_server_owner(ctx.author):
-        return await ctx.send("❌ Only server owner can use this!")
-    
-    config['owner_id'] = member.id
-    save_config()
-    await ctx.send(f"✅ {member.mention} is now the bot owner!\n- {BOT_CREATOR}")
-
 @bot.command(name='serverlock')
 async def serverlock_cmd(ctx):
     if not is_server_owner(ctx.author):
@@ -871,75 +873,6 @@ async def serverunlock_cmd(ctx):
             continue
     
     await ctx.send(f"🔓 Server Unlocked!\n- {BOT_CREATOR} | {BOT_OWNER}")
-
-# ============ HELP COMMAND ============
-@bot.command(name='help')
-async def help_cmd(ctx):
-    """Show all commands"""
-    embed = discord.Embed(
-        title=f"{BOT_EMOJI} {BOT_NAME} Commands",
-        description=f"Your AI Assistant from **{BOT_OWNER}**\n*{BOT_MOTTO}*",
-        color=discord.Color.blue()
-    )
-    
-    embed.add_field(
-        name="📌 Tag Bot",
-        value=f"`@{BOT_NAME} <question>` - Ask AI by tagging",
-        inline=False
-    )
-    
-    embed.add_field(
-        name="🤖 AI Commands",
-        value="`!ai <question>` - Ask AI\n"
-              "`!ask <question>` - Ask AI (alias)\n"
-              "`!about` - About the bot\n"
-              "`!whoami` - Who is the bot?\n"
-              "`!ping` - Check latency\n"
-              "`!uptime` - Bot uptime",
-        inline=False
-    )
-    
-    if is_mod(ctx.author):
-        embed.add_field(
-            name="🛡️ Moderation",
-            value="`!warn @user <reason>` - Warn user\n"
-                  "`!warnings @user` - View warnings\n"
-                  "`!mute @user <time> <reason>` - Mute user\n"
-                  "`!unmute @user` - Unmute user\n"
-                  "`!kick @user <reason>` - Kick user\n"
-                  "`!ban @user <reason>` - Ban user\n"
-                  "`!clear <amount>` - Clear messages",
-            inline=False
-        )
-        
-        embed.add_field(
-            name="🔊 Voice Commands",
-            value="`!join` - Join your VC\n"
-                  "`!join <channel_id>` - Join specific VC\n"
-                  "`!leave` - Leave VC\n"
-                  "`!mutebot` - Mute bot in VC\n"
-                  "`!unmutebot` - Unmute bot in VC",
-            inline=False
-        )
-    
-    if is_admin(ctx.author) or is_server_owner(ctx.author):
-        embed.add_field(
-            name="⚙️ Admin",
-            value="`!setowner @user` - Set bot owner\n"
-                  "`!system` - System info\n"
-                  "`!serverlock` - Lock server\n"
-                  "`!serverunlock` - Unlock server",
-            inline=False
-        )
-    
-    embed.add_field(
-        name="💡 Info",
-        value=f"**Creator:** {BOT_CREATOR}\n**Owner:** {BOT_OWNER}\n**Version:** {BOT_VERSION}\n**Model:** {DEFAULT_MODEL}",
-        inline=False
-    )
-    
-    embed.set_footer(text=f"{BOT_MOTTO} • {BOT_OWNER}")
-    await ctx.send(embed=embed)
 
 # ============ RUN ============
 if __name__ == "__main__":
