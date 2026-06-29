@@ -1,4 +1,4 @@
-# bot.py - Complete Discord Bot with Full AI Identity (Optimized)
+# bot.py - Complete Discord Bot with Full AI Identity
 import os
 import discord
 from discord.ext import commands
@@ -12,11 +12,28 @@ import re
 from datetime import datetime, timedelta
 from collections import defaultdict
 import platform
+import subprocess
+import importlib
+
+# ============ AUTO INSTALL MISSING LIBRARIES ============
+def install_package(package):
+    """Auto install missing packages"""
+    try:
+        importlib.import_module(package)
+        return True
+    except ImportError:
+        print(f"📦 Installing {package}...")
+        subprocess.check_call([sys.executable, "-m", "pip", "install", package])
+        return True
+
+# Install required packages if missing
+required_packages = ['psutil', 'aiohttp']
+for package in required_packages:
+    install_package(package)
+
+# Now import after installation
 import psutil
 import aiohttp
-import aiofiles
-import yaml
-import toml
 
 # ============ LOGGING ============
 logging.basicConfig(
@@ -74,7 +91,7 @@ DEFAULT_MODEL = "DeepSeek-R1"
 
 # ============ RATE LIMIT ============
 last_request_time = 0
-MIN_INTERVAL = 2  # Reduced from 30 to 2 seconds
+MIN_INTERVAL = 2  # Reduced for faster responses
 
 # ============ GLOBAL VARIABLES ============
 voice_connections = {}
@@ -257,7 +274,7 @@ async def ask_ai(prompt):
         YOUR RULES:
         1. Always introduce yourself as {BOT_NAME} from {BOT_OWNER}
         2. Respond in the SAME language as the user
-        3. Keep responses SHORT (max 100 words) - reduced from 200
+        3. Keep responses SHORT (max 100 words)
         4. Be {BOT_PERSONALITY}
         5. Never say you're an AI or language model
         6. You are a real person/assistant
