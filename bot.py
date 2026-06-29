@@ -1,4 +1,4 @@
-# bot.py - Complete Discord Bot with Full AI Identity
+# bot.py - Complete Discord Bot with Full AI Identity + Auto Voice Support
 import os
 import discord
 from discord.ext import commands
@@ -14,8 +14,9 @@ from collections import defaultdict
 import platform
 import subprocess
 import importlib
+import shutil
 
-# ============ AUTO INSTALL MISSING LIBRARIES ============
+# ============ AUTO INSTALL ALL DEPENDENCIES ============
 def install_package(package):
     """Auto install missing packages"""
     try:
@@ -23,13 +24,60 @@ def install_package(package):
         return True
     except ImportError:
         print(f"📦 Installing {package}...")
-        subprocess.check_call([sys.executable, "-m", "pip", "install", package])
+        subprocess.check_call([sys.executable, "-m", "pip", "install", package, "--quiet"])
         return True
 
-# Install required packages if missing
-required_packages = ['psutil', 'aiohttp']
+def install_ffmpeg():
+    """Auto install FFmpeg if not found"""
+    if shutil.which("ffmpeg") is not None:
+        print("✅ FFmpeg is already installed!")
+        return True
+    
+    print("📦 Installing FFmpeg...")
+    
+    # Check operating system
+    if sys.platform.startswith('linux'):
+        # For Linux (Ubuntu/Debian)
+        try:
+            subprocess.check_call(["sudo", "apt-get", "update", "-qq"])
+            subprocess.check_call(["sudo", "apt-get", "install", "-y", "ffmpeg"])
+            print("✅ FFmpeg installed successfully!")
+            return True
+        except:
+            print("⚠️ Could not install FFmpeg automatically on Linux")
+            return False
+    
+    elif sys.platform == 'darwin':
+        # For macOS
+        try:
+            subprocess.check_call(["brew", "install", "ffmpeg"])
+            print("✅ FFmpeg installed successfully!")
+            return True
+        except:
+            print("⚠️ Could not install FFmpeg automatically on macOS")
+            return False
+    
+    else:
+        print("⚠️ Please install FFmpeg manually for this OS")
+        return False
+
+# Install all required Python packages
+print("🔧 Checking and installing dependencies...")
+
+# Essential packages
+required_packages = ['psutil', 'aiohttp', 'PyNaCl']
 for package in required_packages:
     install_package(package)
+
+# Install voice support
+try:
+    importlib.import_module('discord.voice')
+except:
+    print("📦 Installing discord.py with voice support...")
+    subprocess.check_call([sys.executable, "-m", "pip", "install", "discord.py[voice]", "--quiet"])
+
+# Install FFmpeg
+install_ffmpeg()
 
 # Now import after installation
 import psutil
@@ -100,7 +148,6 @@ muted = {}
 config = {}
 _bot_ready = False
 start_time = datetime.now()
-message_queue = asyncio.Queue()
 
 # ============ BOT SETUP ============
 intents = discord.Intents.all()
@@ -432,6 +479,7 @@ async def join_cmd(ctx, channel_id: int = None):
         if ctx.guild.id in voice_connections:
             if voice_connections[ctx.guild.id].is_connected():
                 await voice_connections[ctx.guild.id].disconnect()
+                del voice_connections[ctx.guild.id]
         
         # Connect to voice channel
         vc = await channel.connect(timeout=30.0)
@@ -448,7 +496,13 @@ async def join_cmd(ctx, channel_id: int = None):
     except discord.Forbidden:
         await ctx.send("❌ I don't have permission to join that voice channel!")
     except discord.opus.OpusNotLoaded:
-        await ctx.send("❌ Voice support is not available!")
+        await ctx.send("❌ Voice support is not available! Installing opus...")
+        # Try to install opus
+        try:
+            subprocess.check_call([sys.executable, "-m", "pip", "install", "discord.py[voice]", "--quiet"])
+            await ctx.send("✅ Voice support installed! Please try !join again.")
+        except:
+            await ctx.send("❌ Failed to install voice support!")
     except Exception as e:
         logger.error(f"❌ Voice join error: {e}")
         await ctx.send(f"❌ Failed to join VC: {str(e)[:50]}")
