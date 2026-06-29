@@ -1,4 +1,4 @@
-# bot.py - Complete Discord Bot with New Bot ID
+# bot.py - Complete Discord Bot with Full Control (Fully Working)
 import os
 import sys
 import subprocess
@@ -115,7 +115,7 @@ BOT_CREATOR = "TurboIG"
 BOT_OWNER = "TurboIG Web"
 BOT_VERSION = "2.0.0"
 BOT_EMOJI = "🤖"
-BOT_ID = "1521130781978787871"  # ✅ NEW BOT ID
+BOT_ID = "1521130781978787871"  # New Bot ID
 
 # ============ AUTHORIZED USERS ============
 AUTHORIZED_USERS = [
@@ -126,13 +126,13 @@ AUTHORIZED_USERS = [
 ]
 
 # ============ BOT SETUP ============
-# ✅ Use default intents (safer)
 intents = discord.Intents.default()
-intents.message_content = True  # Message content intent (ZAROORI!)
+intents.message_content = True
 intents.guilds = True
 intents.guild_messages = True
 intents.dm_messages = True
-intents.guild_members = True  # Agar enable hai toh
+intents.guild_members = True
+intents.voice_states = True
 
 bot = commands.Bot(command_prefix='!', intents=intents, help_command=None)
 
@@ -430,7 +430,7 @@ async def on_message(message):
         if is_authorized(message.author):
             await handle_dm_command(message)
         else:
-            await message.channel.send(f"❌ You are not authorized to control me!")
+            await message.channel.send(f"❌ You are not authorized to control me!\nOnly {', '.join(AUTHORIZED_USERS)} can control me.")
         return
     
     # TAG BOT FOR AI
@@ -446,6 +446,12 @@ async def on_message(message):
             await send_part_by_part(message.channel, parts)
         return
     
+    # VOICE COMMANDS
+    if message.content.startswith('!joinvc'):
+        if is_admin(message.author):
+            await handle_join_vc(message)
+        return
+    
     await bot.process_commands(message)
 
 # ============ DM COMMAND HANDLER ============
@@ -456,12 +462,12 @@ async def handle_dm_command(message):
     if content.startswith('!joindc'):
         parts = content.split(' ', 1)
         if len(parts) < 2:
-            await message.channel.send("❌ Usage: `!joindc <discord_invite_link>`")
+            await message.channel.send("❌ Usage: `!joindc <discord_invite_link>`\nExample: `!joindc https://discord.gg/abc123`")
             return
         
         invite_code = extract_invite_code(parts[1])
         if not invite_code:
-            await message.channel.send("❌ Invalid invite link!")
+            await message.channel.send("❌ Invalid invite link! Use: `https://discord.gg/code` or `discord.gg/code`")
             return
         
         await message.channel.send(f"🔗 Checking invite: `{invite_code}`...")
@@ -470,11 +476,12 @@ async def handle_dm_command(message):
             invite = await bot.fetch_invite(f"https://discord.gg/{invite_code}")
             
             if not invite:
-                await message.channel.send("❌ Invite not found!")
+                await message.channel.send("❌ Invite not found! Check the code.")
                 return
             
             if invite.guild.id in [g.id for g in bot.guilds]:
                 await message.channel.send(f"✅ Already in server: **{invite.guild.name}**")
+                await message.channel.send(f"📊 Server ID: `{invite.guild.id}`")
                 return
             
             embed = discord.Embed(
@@ -486,16 +493,16 @@ async def handle_dm_command(message):
             embed.add_field(name="🟢 Online", value=invite.approximate_presence_count or "Unknown", inline=True)
             embed.add_field(name="🆔 Server ID", value=f"`{invite.guild.id}`", inline=True)
             embed.add_field(
-                name="🔗 Invite Link (Manual)",
+                name="🔗 Invite Bot Manually",
                 value=f"https://discord.com/api/oauth2/authorize?client_id={BOT_ID}&permissions=8&scope=bot",
                 inline=False
             )
-            embed.set_footer(text="⚠️ Please invite manually!")
+            embed.set_footer(text="⚠️ Please invite manually using the link above!")
             
             await message.channel.send(embed=embed)
             
         except discord.NotFound:
-            await message.channel.send("❌ Invite not found!")
+            await message.channel.send("❌ Invite not found! Check the code.")
         except Exception as e:
             await message.channel.send(f"❌ Error: {str(e)[:100]}")
         return
@@ -506,7 +513,7 @@ async def handle_dm_command(message):
         
         if len(parts) < 2:
             if len(bot.guilds) == 0:
-                await message.channel.send("❌ I'm not in any servers!")
+                await message.channel.send("❌ I'm not in any servers! Use `!joindc` to check invite.")
                 return
             
             guild = bot.guilds[0]
@@ -519,7 +526,7 @@ async def handle_dm_command(message):
             server_id = int(parts[1])
             guild = bot.get_guild(server_id)
             if not guild:
-                await message.channel.send("❌ Server not found!")
+                await message.channel.send("❌ Server not found! Use `!servers` to list all servers.")
                 return
             
             await message.channel.send(f"🔊 Joining voice in **{guild.name}**...")
@@ -527,7 +534,7 @@ async def handle_dm_command(message):
             await message.channel.send(f"✅ {msg}" if success else f"❌ {msg}")
             
         except ValueError:
-            await message.channel.send("❌ Invalid server ID!")
+            await message.channel.send("❌ Invalid server ID! Use: `!joinvc <server_id>`")
         return
     
     # !leavevc
@@ -558,7 +565,7 @@ async def handle_dm_command(message):
     # !servers
     if content == '!servers':
         if len(bot.guilds) == 0:
-            await message.channel.send("❌ I'm not in any servers!")
+            await message.channel.send("❌ I'm not in any servers!\n\nTo add me to a server, use:\n`https://discord.com/api/oauth2/authorize?client_id={BOT_ID}&permissions=8&scope=bot`")
             return
         
         embed = discord.Embed(
@@ -575,6 +582,9 @@ async def handle_dm_command(message):
                 value=f"🆔 `{guild.id}`\n👥 {members} members",
                 inline=False
             )
+        
+        if len(bot.guilds) > 10:
+            embed.set_footer(text=f"And {len(bot.guilds) - 10} more servers...")
         
         await message.channel.send(embed=embed)
         return
@@ -610,6 +620,7 @@ async def handle_dm_command(message):
     if content == '!help' or content == '!commands':
         embed = discord.Embed(
             title=f"{BOT_EMOJI} DM Commands",
+            description="Control the bot via DM",
             color=discord.Color.blue()
         )
         embed.add_field(
@@ -634,7 +645,8 @@ async def handle_dm_command(message):
                   "`!leavevc` - Leave VC\n"
                   "`@CAREFULLY` - Ask AI\n"
                   "`!ai` - Ask AI\n"
-                  "`!about` - About bot",
+                  "`!about` - About bot\n"
+                  "`!ping` - Check latency",
             inline=False
         )
         embed.add_field(
@@ -644,6 +656,7 @@ async def handle_dm_command(message):
                   f"`https://discord.com/api/oauth2/authorize?client_id={BOT_ID}&permissions=8&scope=bot`",
             inline=False
         )
+        embed.set_footer(text=f"Owner: {BOT_OWNER}")
         await message.channel.send(embed=embed)
         return
     
@@ -685,26 +698,29 @@ async def handle_dm_command(message):
     if content.startswith('!ai'):
         parts = content.split(' ', 1)
         if len(parts) < 2:
-            await message.channel.send(f"AI: **{'ON' if config.get('ai_enabled', True) else 'OFF'}**")
+            await message.channel.send(f"AI is currently: **{'ON' if config.get('ai_enabled', True) else 'OFF'}**")
             return
         
-        if parts[1].lower() in ['on', 'enable']:
+        if parts[1].lower() in ['on', 'enable', 'true']:
             config['ai_enabled'] = True
             save_config()
             await message.channel.send("✅ AI enabled!")
-        elif parts[1].lower() in ['off', 'disable']:
+        elif parts[1].lower() in ['off', 'disable', 'false']:
             config['ai_enabled'] = False
             save_config()
             await message.channel.send("❌ AI disabled!")
+        else:
+            await message.channel.send("❌ Use: `!ai on` or `!ai off`")
         return
     
-    await message.channel.send(f"❌ Unknown command! Use `!help`")
+    # Unknown command
+    await message.channel.send(f"❌ Unknown command! Use `!help` for commands.")
 
 # ============ SERVER VOICE COMMANDS ============
 async def handle_join_vc(message):
     try:
         if not message.author.voice:
-            await message.channel.send("❌ You're not in a voice channel!")
+            await message.channel.send("❌ You're not in a voice channel! Join one first.")
             return
         
         channel = message.author.voice.channel
@@ -720,7 +736,7 @@ async def handle_join_vc(message):
         voice_connections[message.guild.id] = vc
         await vc.guild.change_voice_state(channel=channel, self_mute=True)
         
-        await message.channel.send(f"🔊 Joined **{channel.name}**!\n- {BOT_CREATOR}")
+        await message.channel.send(f"🔊 Joined **{channel.name}**!\n- {BOT_CREATOR} | {BOT_OWNER}")
         
     except Exception as e:
         await message.channel.send(f"❌ Failed to join VC: {str(e)[:50]}")
@@ -737,7 +753,7 @@ async def leavevc_cmd(ctx):
             if vc and vc.is_connected():
                 await vc.disconnect()
                 del voice_connections[ctx.guild.id]
-                await ctx.send(f"🔇 Left voice channel\n- {BOT_CREATOR}")
+                await ctx.send(f"🔇 Left voice channel\n- {BOT_CREATOR} | {BOT_OWNER}")
             else:
                 await ctx.send("❌ Not in any voice channel!")
         else:
@@ -752,7 +768,7 @@ async def mutebot_cmd(ctx):
             vc = voice_connections[ctx.guild.id]
             if vc and vc.is_connected():
                 await vc.guild.change_voice_state(channel=vc.channel, self_mute=True)
-                await ctx.send("🔇 Bot muted\n- {BOT_CREATOR}")
+                await ctx.send("🔇 Bot muted\n- {BOT_CREATOR} | {BOT_OWNER}")
             else:
                 await ctx.send("❌ Not in any voice channel!")
         else:
@@ -767,7 +783,7 @@ async def unmutebot_cmd(ctx):
             vc = voice_connections[ctx.guild.id]
             if vc and vc.is_connected():
                 await vc.guild.change_voice_state(channel=vc.channel, self_mute=False)
-                await ctx.send("🔊 Bot unmuted\n- {BOT_CREATOR}")
+                await ctx.send("🔊 Bot unmuted\n- {BOT_CREATOR} | {BOT_OWNER}")
             else:
                 await ctx.send("❌ Not in any voice channel!")
         else:
@@ -851,6 +867,9 @@ async def servers_cmd(ctx):
             inline=False
         )
     
+    if len(bot.guilds) > 15:
+        embed.set_footer(text=f"And {len(bot.guilds) - 15} more servers...")
+    
     await ctx.send(embed=embed)
 
 # ============ HELP COMMAND ============
@@ -871,8 +890,8 @@ async def help_cmd(ctx):
     embed.add_field(
         name="🤖 AI Commands",
         value="`!ai <question>` - Ask AI\n"
-              "`!ask <question>` - Ask AI\n"
-              "`!about` - About bot\n"
+              "`!ask <question>` - Ask AI (alias)\n"
+              "`!about` - About the bot\n"
               "`!ping` - Check latency\n"
               "`!invite` - Get invite link",
         inline=False
@@ -890,13 +909,14 @@ async def help_cmd(ctx):
         )
         
         embed.add_field(
-            name="📱 DM Commands",
-            value="`!joindc <invite>` - Check server\n"
+            name="📱 DM Commands (DM Only)",
+            value="`!joindc <invite>` - Check server invite\n"
                   "`!servers` - List servers\n"
                   "`!status` - Bot status\n"
                   "`!invite` - Get invite link\n"
-                  "`!joinvc` - Join VC\n"
-                  "`!leavevc` - Leave VC",
+                  "`!joinvc [server_id]` - Join VC\n"
+                  "`!leavevc [server_id]` - Leave VC\n"
+                  "`!ai on/off` - Toggle AI",
             inline=False
         )
     
@@ -908,7 +928,13 @@ async def help_cmd(ctx):
         inline=False
     )
     
-    embed.set_footer(text=f"{BOT_OWNER} • DM me for control!")
+    embed.add_field(
+        name="💡 Info",
+        value=f"**Creator:** {BOT_CREATOR}\n**Owner:** {BOT_OWNER}\n**Version:** {BOT_VERSION}",
+        inline=False
+    )
+    
+    embed.set_footer(text=f"{BOT_OWNER} • DM me for full control!")
     await ctx.send(embed=embed)
 
 # ============ RUN ============
