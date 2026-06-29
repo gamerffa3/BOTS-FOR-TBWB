@@ -1,4 +1,4 @@
-# bot.py - CAREFULLY Bot - Complete Voice-Only Mode (Sirf Voice Messages)
+# bot.py - CAREFULLY Bot - Complete Auto-Install Everything
 import os
 import sys
 import subprocess
@@ -20,11 +20,12 @@ import tempfile
 # ============ SUPPRESS ALL WARNINGS ============
 warnings.filterwarnings("ignore")
 
-# ============ AUTO INSTALL EVERYTHING ON START ============
+# ============ AUTO INSTALL EVERYTHING ON EVERY START ============
 def install_all_dependencies():
-    """Install ALL dependencies on every bot start"""
+    """Install ALL dependencies on every bot start - New system pe bhi kaam karega"""
     print("🔧 Installing ALL dependencies...")
     
+    # Sab packages jo chahiye
     packages = [
         'discord.py[voice]',
         'requests',
@@ -37,9 +38,11 @@ def install_all_dependencies():
         'beautifulsoup4',
         'lxml',
         'gTTS',
-        'pydub'
+        'pydub',
+        'ffmpeg-python'
     ]
     
+    # Har package ko install karo
     for package in packages:
         print(f"📦 Installing {package}...")
         try:
@@ -49,14 +52,19 @@ def install_all_dependencies():
                 stderr=subprocess.DEVNULL
             )
             print(f"✅ {package} installed!")
-        except:
-            print(f"⚠️ Could not install {package}")
+        except Exception as e:
+            print(f"⚠️ Could not install {package}: {e}")
     
+    # FFmpeg system level install
     install_ffmpeg()
+    
+    # Opus install for voice
+    install_opus()
+    
     print("✅ All dependencies installed!")
 
 def install_ffmpeg():
-    """Install FFmpeg system-wide"""
+    """Install FFmpeg system-wide - Har OS ke liye"""
     if shutil.which("ffmpeg") is not None:
         print("✅ FFmpeg already installed!")
         return True
@@ -64,27 +72,58 @@ def install_ffmpeg():
     print("📦 Installing FFmpeg...")
     try:
         if sys.platform.startswith('linux'):
+            # Linux (Ubuntu/Debian/GitHub Actions)
             subprocess.check_call(["sudo", "apt-get", "update", "-qq"], 
                                  stdout=subprocess.DEVNULL, 
                                  stderr=subprocess.DEVNULL)
             subprocess.check_call(["sudo", "apt-get", "install", "-y", "ffmpeg"],
                                  stdout=subprocess.DEVNULL,
                                  stderr=subprocess.DEVNULL)
-            print("✅ FFmpeg installed!")
+            print("✅ FFmpeg installed on Linux!")
             return True
         elif sys.platform == 'darwin':
+            # macOS
             subprocess.check_call(["brew", "install", "ffmpeg"],
                                  stdout=subprocess.DEVNULL,
                                  stderr=subprocess.DEVNULL)
-            print("✅ FFmpeg installed!")
+            print("✅ FFmpeg installed on macOS!")
             return True
-        else:
-            print("⚠️ Please install FFmpeg manually")
+        elif sys.platform.startswith('win'):
+            # Windows - Download and install
+            print("⚠️ Windows: Please install FFmpeg manually")
+            print("Download from: https://ffmpeg.org/download.html")
             return False
-    except:
-        print("⚠️ Could not install FFmpeg")
+        else:
+            print(f"⚠️ Unknown OS: {sys.platform}")
+            return False
+    except Exception as e:
+        print(f"⚠️ Could not install FFmpeg: {e}")
         return False
 
+def install_opus():
+    """Install Opus for voice support"""
+    print("📦 Installing Opus...")
+    try:
+        if sys.platform.startswith('linux'):
+            subprocess.check_call(["sudo", "apt-get", "install", "-y", "libopus-dev"],
+                                 stdout=subprocess.DEVNULL,
+                                 stderr=subprocess.DEVNULL)
+            print("✅ Opus installed on Linux!")
+            return True
+        elif sys.platform == 'darwin':
+            subprocess.check_call(["brew", "install", "opus"],
+                                 stdout=subprocess.DEVNULL,
+                                 stderr=subprocess.DEVNULL)
+            print("✅ Opus installed on macOS!")
+            return True
+        else:
+            print("⚠️ Opus not installed, voice may not work")
+            return False
+    except:
+        print("⚠️ Could not install Opus")
+        return False
+
+# ============ RUN INSTALLATION ============
 install_all_dependencies()
 
 # ============ IMPORT ALL LIBRARIES ============
@@ -122,7 +161,7 @@ BOT_OWNER = "TurboIG Web"
 BOT_VERSION = "3.0.0"
 BOT_EMOJI = "🎙️"
 BOT_ID = "1521130781978787871"
-BOT_DESCRIPTION = "AI Voice Bot - Sirf Voice Messages"
+BOT_DESCRIPTION = "AI Voice Bot - Complete Auto-Install"
 
 # ============ AUTHORIZED USERS ============
 AUTHORIZED_USERS = [
@@ -136,6 +175,7 @@ AUTHORIZED_USERS = [
 intents = discord.Intents.default()
 intents.message_content = True
 intents.voice_states = True
+intents.guilds = True
 
 bot = commands.Bot(command_prefix='!', intents=intents, help_command=None)
 
@@ -256,6 +296,7 @@ def text_to_speech(text, language=None):
         tts = gTTS(text=text, lang=language, slow=False)
         tts.save(temp_path)
         
+        # Convert to WAV for better Discord support
         try:
             audio = AudioSegment.from_mp3(temp_path)
             wav_path = temp_path.replace('.mp3', '.wav')
@@ -325,7 +366,7 @@ async def ask_ai(prompt):
         }
         
         async with aiohttp.ClientSession() as session:
-            async with session.post(url, headers=headers, json=data, timeout=10) as response:
+            async with session.post(url, headers=headers, json=data, timeout=15) as response:
                 if response.status == 200:
                     result = await response.json()
                     if "choices" in result and len(result["choices"]) > 0:
@@ -401,53 +442,63 @@ async def leave_voice_channel(guild_id):
 async def send_voice_message(channel, text):
     """Send voice message in voice channel"""
     if not config.get('voice_enabled', True):
-        return None
+        return False
     
     try:
         guild = channel.guild
         if not guild:
-            return None
+            return False
         
-        # Agar VC mein nahi hai toh join karo
+        # Check if bot is in VC
         if guild.id not in voice_connections:
-            # Pehle user ke VC mein join karo
+            # Try to auto-join
             if hasattr(channel, 'author') and channel.author and channel.author.voice:
                 vc = await channel.author.voice.channel.connect()
                 voice_connections[guild.id] = vc
                 await channel.send(f"🔊 Joined **{channel.author.voice.channel.name}** for voice message!")
             else:
                 await channel.send("❌ I'm not in a voice channel! Use `!joinvc` first.")
-                return None
+                return False
         
         vc = voice_connections[guild.id]
         
+        if not vc or not vc.is_connected():
+            await channel.send("❌ Bot is not connected to voice channel!")
+            return False
+        
+        # Convert text to speech
         language = detect_language(text)
         audio_path = text_to_speech(text, language)
         if not audio_path:
-            return None
+            await channel.send("❌ Failed to generate voice! Check TTS installation.")
+            return False
         
-        if vc and vc.is_connected():
-            if vc.is_playing():
-                vc.stop()
-            
-            audio_source = discord.FFmpegPCMAudio(audio_path)
-            vc.play(audio_source)
-            
-            def cleanup():
-                try:
+        # Play audio
+        if vc.is_playing():
+            vc.stop()
+        
+        # Create audio source
+        audio_source = discord.FFmpegPCMAudio(audio_path, executable='ffmpeg')
+        vc.play(audio_source)
+        
+        # Cleanup after play
+        def cleanup():
+            try:
+                if os.path.exists(audio_path):
                     os.remove(audio_path)
-                except:
-                    pass
-            
-            while vc.is_playing():
-                await asyncio.sleep(0.1)
-            
-            cleanup()
-            return True
+            except:
+                pass
+        
+        # Wait for playback
+        while vc.is_playing():
+            await asyncio.sleep(0.1)
+        
+        cleanup()
+        return True
             
     except Exception as e:
         logger.error(f"❌ Voice send error: {e}")
-        return None
+        return False
 
 def extract_invite_code(text):
     match = re.search(r'(?:discord\.gg/|discord\.com/invite/)([a-zA-Z0-9\-_]+)', text)
@@ -506,11 +557,9 @@ async def on_message(message):
     if isinstance(message.channel, discord.DMChannel):
         if is_authorized(message.author):
             await handle_dm_command(message)
-        else:
-            await message.channel.send(f"❌ You are not authorized to control me!\nOnly {', '.join(AUTHORIZED_USERS)} can control me.")
         return
     
-    # ==================== TAG BOT FOR AI VOICE (SIRF VOICE) ====================
+    # TAG BOT FOR AI VOICE
     if bot.user.mentioned_in(message):
         prompt = message.content.replace(f'<@{bot.user.id}>', '').replace(f'<@!{bot.user.id}>', '').strip()
         
@@ -518,23 +567,19 @@ async def on_message(message):
             await message.channel.send(f"{BOT_EMOJI} Hello! I'm {BOT_NAME}. Tag me with a question! 🎙️")
             return
         
-        # Typing indicator
+        # Show typing
         async with message.channel.typing():
             parts = await ask_ai(prompt)
             response_text = parts[0] if parts else "Sorry, I couldn't respond."
         
-        # ✅ SIRF VOICE - Text nahi bhejna!
-        # await message.channel.send(f"{BOT_EMOJI} {response_text}\n- {BOT_CREATOR}")
-        
-        # Sirf Voice message bhejo
+        # Try voice first
         try:
             success = await send_voice_message(message.channel, response_text)
             if not success:
-                # Agar voice fail ho toh text bhejo (backup)
+                # If voice fails, send text
                 await message.channel.send(f"{BOT_EMOJI} {response_text}\n- {BOT_CREATOR}")
         except Exception as e:
             logger.error(f"❌ Voice failed: {e}")
-            # Backup text
             await message.channel.send(f"{BOT_EMOJI} {response_text}\n- {BOT_CREATOR}")
         
         return
@@ -594,8 +639,6 @@ async def handle_dm_command(message):
             
             await message.channel.send(embed=embed)
             
-        except discord.NotFound:
-            await message.channel.send("❌ Invite not found!")
         except Exception as e:
             await message.channel.send(f"❌ Error: {str(e)[:100]}")
         return
@@ -693,7 +736,6 @@ async def handle_dm_command(message):
         embed.add_field(name="🌍 Language", value=config.get('voice_language', 'hi').upper(), inline=True)
         embed.add_field(name="⏰ Uptime", value=str(datetime.now() - start_time).split('.')[0], inline=True)
         embed.add_field(name="🧠 AI", value="✅ Enabled" if config.get('ai_enabled', True) else "❌ Disabled", inline=True)
-        embed.add_field(name="🎙️ Mode", value="Voice-Only", inline=True)
         embed.add_field(
             name="🔗 Invite Link",
             value=f"https://discord.com/api/oauth2/authorize?client_id={BOT_ID}&permissions=8&scope=bot",
@@ -856,14 +898,20 @@ async def handle_dm_command(message):
 
 # ============ VOICE COMMANDS ============
 @bot.command(name='joinvc')
-async def joinvc_cmd(ctx):
+async def joinvc_cmd(ctx, channel_id: int = None):
     """Join voice channel"""
-    if not ctx.author.voice:
-        await ctx.send("❌ You're not in a voice channel!")
+    if not ctx.author.voice and not channel_id:
+        await ctx.send("❌ You're not in a voice channel! Use `!joinvc <channel_id>`")
         return
     
     try:
-        channel = ctx.author.voice.channel
+        if channel_id:
+            channel = bot.get_channel(channel_id)
+            if not channel or not isinstance(channel, discord.VoiceChannel):
+                await ctx.send("❌ Invalid voice channel ID!")
+                return
+        else:
+            channel = ctx.author.voice.channel
         
         if ctx.guild.id in voice_connections:
             vc = voice_connections[ctx.guild.id]
@@ -980,7 +1028,7 @@ async def ai_cmd(ctx, *, question):
         parts = await ask_ai(question)
         response = parts[0] if parts else "❌ Error"
     
-    # Voice-Only Mode - Sirf Voice
+    # Try voice first
     try:
         success = await send_voice_message(ctx.channel, response)
         if not success:
@@ -1028,7 +1076,6 @@ async def ping_cmd(ctx):
     )
     embed.add_field(name="🤖 Bot", value=f"{BOT_NAME} v{BOT_VERSION}", inline=True)
     embed.add_field(name="🎙️ Voice", value="✅ Ready" if config.get('voice_enabled', True) else "❌ Disabled", inline=True)
-    embed.add_field(name="🎙️ Mode", value="Voice-Only", inline=True)
     await ctx.send(embed=embed)
 
 @bot.command(name='invite')
